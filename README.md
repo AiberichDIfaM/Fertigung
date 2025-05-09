@@ -6,7 +6,7 @@ A modular framework combining low-level and high-level PPO agents to solve flexi
 General purpose
 - The project implements a reinforcement learning based solver for the job shop scheduling problem on generic manufacturing graphs.
 - There are no restrictions on the shape of the manufacturing graph 
-- Pretrained models help quick advancement toward a working expert system
+- Pretrained models help to quickly advance toward a working expert system
 
 This repository implements:
 
