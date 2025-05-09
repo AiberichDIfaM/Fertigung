@@ -53,8 +53,8 @@ This repository implements:
 
 1. Clone this repo:
    ```bash
-   git clone https://github.com/your-username/flexible-jobshop-rl.git
-   cd flexible-jobshop-rl
+   git clone https://github.com/AiberichDafM/Fertigung.git
+   cd fertigung
 2. Create a virtual environment and install dependencies:
 
     ```bash
