@@ -1,0 +1,175 @@
+=== Hierarchical Produktionssimulation mit RL gestartet ===
+Initial HL-Observation: [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+Initialer Anlagenstatus:
+Global Buffer: 0:a1, 1:a2, 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 9:a1
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+
+--- HL Schritt 0 ---
+Subgoal-Action: [0] (noop)
+HL-Reward: [0.]
+Anlagenstatus nach Schritt:
+Global Buffer: 0:a1, 1:a2, 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 9:a1
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+
+--- HL Schritt 1 ---
+Subgoal-Action: [0] (noop)
+HL-Reward: [0.]
+Anlagenstatus nach Schritt:
+Global Buffer: 0:a1, 1:a2, 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 9:a1
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+
+--- HL Schritt 2 ---
+Subgoal-Action: [0] (noop)
+HL-Reward: [0.]
+Anlagenstatus nach Schritt:
+Global Buffer: 0:a1, 1:a2, 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 9:a1
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+
+--- HL Schritt 3 ---
+Subgoal-Action: [0] (noop)
+HL-Reward: [0.]
+Anlagenstatus nach Schritt:
+Global Buffer: 0:a1, 1:a2, 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 9:a1
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+
+--- HL Schritt 4 ---
+Subgoal-Action: [0] (noop)
+HL-Reward: [0.]
+Anlagenstatus nach Schritt:
+Global Buffer: 0:a1, 1:a2, 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 9:a1
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+
+--- HL Schritt 5 ---
+Subgoal-Action: [0] (noop)
+HL-Reward: [0.]
+Anlagenstatus nach Schritt:
+Global Buffer: 0:a1, 1:a2, 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 9:a1
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+
+--- HL Schritt 6 ---
+Subgoal-Action: [0] (noop)
+HL-Reward: [0.]
+Anlagenstatus nach Schritt:
+Global Buffer: 0:a1, 1:a2, 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 9:a1
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+
+--- HL Schritt 7 ---
+Subgoal-Action: [0] (noop)
+HL-Reward: [0.]
+Anlagenstatus nach Schritt:
+Global Buffer: 0:a1, 1:a2, 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 9:a1
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+
+--- HL Schritt 8 ---
+Subgoal-Action: [0] (noop)
+HL-Reward: [0.]
+Anlagenstatus nach Schritt:
+Global Buffer: 0:a1, 1:a2, 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 9:a1
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+
+--- HL Schritt 9 ---
+Subgoal-Action: [0] (noop)
+HL-Reward: [0.]
+Anlagenstatus nach Schritt:
+Global Buffer: 0:a1, 1:a2, 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 9:a1
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+=== Hierarchical Produktionssimulation beendet ===

@@ -1,0 +1,930 @@
+=== Produktionssimulation mit RL-Entscheidungen gestartet ===
+Episode gestartet. Initiale Beobachtung: [[22. 22. 22. 22. 22. 22. 22. 22. 22. 22.  0.  0.  0.  1.  1.  0.  0.  0.
+   0.  0.  0.  1.  0.  0.  1.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.
+   0.  0.  0.  0.  0.  1.  1.  1.  0.  0.  0.  0.  0.  1.  0.  0.  0.  0.
+   0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  1.  1.  1.  1.  1.  0.  0.
+   1.  1.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.
+   0.  0.  1.  0.  0.  1.  0.  0.  0.  1.  0.  0.  0.  0.  0.  1.  0.  0.
+   0.  0.  0.  0.  0.  0.  1.  0.  0.  0.  0.  0.  1.  1.  1.  0.  0.  0.
+   1.  1.  1.  1.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.
+   0.  1.  0.  1.  1.  1.  1.  0.  0.  0.  0.  1.  1.  1.  0.  0.  0.  0.
+   0.  1.  1.  0.  0.  0.  0.  0.  0.  1.  0.  0.  1.  0.  0.  0.  0.  0.
+   0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  1.  1.  1.  1.  1.  0.  0.  1.
+   1.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.
+   0.  1.  0.  0.  1.  0.  0.  0.  1.  0.  0.  0.  0.  0.  1.  0.  0.  0.
+   0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  1.  0.  1.  1.  1.  1.  0.
+   0.  0.  0.  1.  1.  1.  0.  0.]]
+Initialer Pufferstatus:
+Global Buffer: 
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+
+--- Schritt 0 ---
+Aktion: [1]
+Reward: [-80.]
+Pufferstatus nach Schritt:
+Global Buffer: 0:a1, 1:a2, 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 9:a1
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 1 ---
+Aktion: [1]
+Reward: [-200.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2
+Machine m1: Input [9:a1, 11:a2, 10:a1, 13:a2, 12:a1, 15:a2, 14:a1, 17:a2, 16:a1, 19:a2, 18:a1, 21:a2, 20:a1, 23:a2, 22:a1, 25:a2, 24:a1, 27:a2] | Output [] | Jobs [[0:a1, 1:a2]]
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 2 ---
+Aktion: [0]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2
+Machine m1: Input [10:a1, 13:a2, 12:a1, 15:a2, 14:a1, 17:a2, 16:a1, 19:a2, 18:a1, 21:a2, 20:a1, 23:a2, 22:a1, 25:a2, 24:a1, 27:a2] | Output [] | Jobs [[0:a1, 1:a2]; [9:a1, 11:a2]]
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 3 ---
+Aktion: [0]
+Reward: [20.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3
+Machine m1: Input [12:a1, 15:a2, 14:a1, 17:a2, 16:a1, 19:a2, 18:a1, 21:a2, 20:a1, 23:a2, 22:a1, 25:a2, 24:a1, 27:a2] | Output [] | Jobs [[9:a1, 11:a2]; [10:a1, 13:a2]]
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 4 ---
+Aktion: [0]
+Reward: [20.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3
+Machine m1: Input [14:a1, 17:a2, 16:a1, 19:a2, 18:a1, 21:a2, 20:a1, 23:a2, 22:a1, 25:a2, 24:a1, 27:a2] | Output [] | Jobs [[10:a1, 13:a2]; [12:a1, 15:a2]]
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 5 ---
+Aktion: [0]
+Reward: [20.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3
+Machine m1: Input [16:a1, 19:a2, 18:a1, 21:a2, 20:a1, 23:a2, 22:a1, 25:a2, 24:a1, 27:a2] | Output [] | Jobs [[12:a1, 15:a2]; [14:a1, 17:a2]]
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 6 ---
+Aktion: [0]
+Reward: [20.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 5:a8, 6:a0, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3
+Machine m1: Input [18:a1, 21:a2, 20:a1, 23:a2, 22:a1, 25:a2, 24:a1, 27:a2] | Output [] | Jobs [[14:a1, 17:a2]; [16:a1, 19:a2]]
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 7 ---
+Aktion: [75]
+Reward: [20.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3
+Machine m1: Input [20:a1, 23:a2, 22:a1, 25:a2, 24:a1, 27:a2] | Output [] | Jobs [[16:a1, 19:a2]; [18:a1, 21:a2]]
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs [[5:a8, 6:a0]]
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 8 ---
+Aktion: [47]
+Reward: [40.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1
+Machine m1: Input [22:a1, 25:a2, 24:a1, 27:a2] | Output [] | Jobs [[18:a1, 21:a2]; [20:a1, 23:a2]]
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 9 ---
+Aktion: [47]
+Reward: [20.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3
+Machine m1: Input [24:a1, 27:a2] | Output [] | Jobs [[20:a1, 23:a2]; [22:a1, 25:a2]]
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 10 ---
+Aktion: [47]
+Reward: [20.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3
+Machine m1: Input [] | Output [] | Jobs [[22:a1, 25:a2]; [24:a1, 27:a2]]
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 11 ---
+Aktion: [47]
+Reward: [20.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3
+Machine m1: Input [] | Output [] | Jobs [[24:a1, 27:a2]]
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 12 ---
+Aktion: [47]
+Reward: [20.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 13 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 14 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 15 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 16 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 17 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 18 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 19 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 20 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 21 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 22 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 23 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 24 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 25 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 26 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 27 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 28 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 29 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 30 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 31 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 32 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 33 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 34 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 35 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 36 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 37 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 38 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 39 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 40 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 41 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 42 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 43 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 44 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 45 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 46 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 47 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 48 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 2:a4, 3:a5, 4:a6, 7:b7, 8:b0, 26:a1, 28:a1, 29:a2, 0:a3, 1:a3, 2:a3, 3:a3, 4:a3, 5:a3, 6:b1, 7:a3, 8:a3, 9:a3, 10:a3
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+--- Schritt 49 ---
+Aktion: [47]
+Reward: [0.]
+Pufferstatus nach Schritt:
+Global Buffer: 
+Machine m1: Input [] | Output [] | Jobs []
+Machine m2: Input [] | Output [] | Jobs []
+Machine m3: Input [] | Output [] | Jobs []
+Machine m4: Input [] | Output [] | Jobs []
+Machine m5: Input [] | Output [] | Jobs []
+Machine m6: Input [] | Output [] | Jobs []
+Machine m7: Input [] | Output [] | Jobs []
+Machine m8: Input [] | Output [] | Jobs []
+Machine m9: Input [] | Output [] | Jobs []
+Machine m0: Input [] | Output [] | Jobs []
+Render Output:
+
+
+=== Episode beendet ===
