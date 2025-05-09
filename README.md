@@ -81,6 +81,7 @@ You can either edit this factory (manufacturing_structure.py). Or replace it and
 5. The two agents perform different tasks: The low level agent fills input buffers. The high level agent assigns subgoals and by this determines the reward for the low level agent. The high level agent is turned rewarded according to the progression of products along the graph and finally meeting production schedules.
 6. Primary task is to properly train the two agents. Once they are trained, you can give them orders with delivery dates and he tries to meet them according to their net worth (meaning more profitable products will be prioritised). 
 
+
 📈 Customization
 Subgoals & Deadlines
 Define your desired product orders in hierarchical_env.py via the required_products list of dictionaries:
@@ -88,6 +89,7 @@ Define your desired product orders in hierarchical_env.py via the required_produ
 Reward Shaping
 Adjust time penalties, potential-based rewards or deadline weights in the environments.
 
+## Misc
 🤝 Contributing
 Fork the repository
 
