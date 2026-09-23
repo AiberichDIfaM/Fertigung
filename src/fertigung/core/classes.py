@@ -1,6 +1,3 @@
-import numpy as np
-
-
 class PartType:
     def __init__(self, name: str, cost: float, value: float = 0.0):
         """
@@ -112,7 +109,7 @@ class Machine:
         job = {
             "transformation": transformation,
             "input_parts": input_parts,
-            "remaining_time": transformation.duration
+            "remaining_time": transformation.duration,
         }
         self.current_jobs.append(job)
         return part_id_counter

@@ -1,12 +1,12 @@
-# File: production_process_with_rl.py
 # Simulation des hierarchischen Produktionsprozesses mit High-Level & Low-Level Agent
 import os
-import numpy as np
+
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.vec_env import DummyVecEnv
-from hierarchical_env import HighLevelEnv
-from manufacturing_structure import anlage
+
+from fertigung.core.reference_plant import anlage
+from fertigung.rl.hierarchical_env import HighLevelEnv
 
 # Modell-Pfade
 MODEL_LL = "lowlevel_ppo_model.zip"
@@ -23,17 +23,20 @@ model_ll = MaskablePPO.load(MODEL_LL)
 model_hl = MaskablePPO.load(MODEL_HL)
 
 # Subgoals definieren (außer elementare Rohteile)
-elementary = {'a1','a2','a4','a5','a6','a8','a0'}
+elementary = {"a1", "a2", "a4", "a5", "a6", "a8", "a0"}
 SUBGOALS = [pt.name for pt in anlage.all_part_types if pt.name not in elementary]
+
 
 # High-Level Env erstellen und maskieren
 def make_hl_env():
     env = HighLevelEnv(anlage, SUBGOALS)
-    return ActionMasker(env, lambda e: e.reset()[1]['action_mask'])
+    return ActionMasker(env, lambda e: e.reset()[1]["action_mask"])
+
 
 vec_env = DummyVecEnv([make_hl_env])
 
 # Hilfsfunktion zum Loggen des Puffer- und Maschinenstatus
+
 
 def log_status():
     lines = []
@@ -44,16 +47,22 @@ def log_status():
     for m in anlage.machines:
         inp = ", ".join(f"{p.id}:{p.type.name}" for p in m.input_buffer)
         out = ", ".join(f"{p.id}:{p.type.name}" for p in m.output_buffer)
-        jobs = "; ".join("[" + ", ".join(f"{p.id}:{p.type.name}" for p in job['input_parts']) + "]" for job in m.current_jobs)
+        jobs = "; ".join(
+            "[" + ", ".join(f"{p.id}:{p.type.name}" for p in job["input_parts"]) + "]"
+            for job in m.current_jobs
+        )
         lines.append(f"Machine {m.machine_id}: Input [{inp}] | Output [{out}] | Jobs [{jobs}]")
     return "\n".join(lines)
 
+
 # Simulation starten
 obs = vec_env.reset()
-logs = ["=== Hierarchical Produktionssimulation mit RL gestartet ===",
-        f"Initial HL-Observation: {obs}",
-        "Initialer Anlagenstatus:",
-        log_status()]
+logs = [
+    "=== Hierarchical Produktionssimulation mit RL gestartet ===",
+    f"Initial HL-Observation: {obs}",
+    "Initialer Anlagenstatus:",
+    log_status(),
+]
 
 step = 0
 terminated = False
@@ -73,7 +82,7 @@ while not (terminated or truncated):
 
     # Log-Eintrag
     logs.append(f"\n--- HL Schritt {step} ---")
-    logs.append(f"Subgoal-Action: {action_hl} ({'noop' if action_hl==0 else SUBGOALS[action_hl-1]})")
+    logs.append(f"Subgoal-Action: {action_hl} ({'noop' if action_hl == 0 else SUBGOALS[action_hl - 1]})")
     logs.append(f"HL-Reward: {reward_hl}")
     logs.append("Anlagenstatus nach Schritt:")
     logs.append(log_status())
@@ -86,4 +95,3 @@ with open(LOG_FILE, "w", encoding="utf-8") as f:
     f.write("\n".join(logs))
 
 print(f"Simulation abgeschlossen. Log in '{LOG_FILE}' gespeichert.")
-

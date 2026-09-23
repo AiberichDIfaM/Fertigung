@@ -1,5 +1,4 @@
-# manufacturing_structure.py
-import classes
+from fertigung.core import classes
 
 # --- Erstelle PartTypes ---
 # Für die "a"-Teile:
@@ -34,7 +33,7 @@ fp2_type = classes.PartType("fp2", cost=0, value=30)
 # Beachte: Als Eingabeparameter für Transformationen werden Listen von PartTypes benötigt.
 tr1 = classes.Transformation([a1, a2], a3, 3)
 tr2 = classes.Transformation([a4, a5, a6], a7, 6)
-tr3 = classes.Transformation([a8], a9, 2)           # vormals: transformation(a8,a9,2)
+tr3 = classes.Transformation([a8], a9, 2)  # vormals: transformation(a8,a9,2)
 tr4 = classes.Transformation([a8, a0], b1, 2)
 tr5 = classes.Transformation([a3, a0], b2, 3)
 tr6 = classes.Transformation([b2, a9], b3, 5)
@@ -85,9 +84,28 @@ for m in machine_array:
 
 # --- Sammle alle PartTypes ---
 all_part_types = [
-    a1, a2, a3, a4, a5, a6, a7, a8, a9, a0,
-    b1, b2, b3, b4, b5, b6, b7, b8, b9, b0,
-    fp1_type, fp2_type
+    a1,
+    a2,
+    a3,
+    a4,
+    a5,
+    a6,
+    a7,
+    a8,
+    a9,
+    a0,
+    b1,
+    b2,
+    b3,
+    b4,
+    b5,
+    b6,
+    b7,
+    b8,
+    b9,
+    b0,
+    fp1_type,
+    fp2_type,
 ]
 
 # --- Erstelle ggf. globale Input-Teile (hier als leere Liste, falls nicht benötigt) ---
