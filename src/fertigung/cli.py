@@ -4,6 +4,7 @@ import sys
 
 from fertigung.core.config import load_config, reference_config
 from fertigung.core.plant import Plant
+from fertigung.core.reward import Reward
 from fertigung.core.simulation import Simulation
 from fertigung.core.validation import validate
 from fertigung.heuristics import POLICIES
@@ -24,11 +25,13 @@ def cmd_validate(args) -> int:
 
 def cmd_simulate(args) -> int:
     sim = Simulation(Plant(_config(args.config)))
-    sim.run(POLICIES[args.policy], args.ticks)
+    reward = Reward(sim)
+    sim.run(POLICIES[args.policy], args.ticks, reward)
     if args.events:
         for e in sim.events:
             print(json.dumps(e.__dict__))
-    print(json.dumps(sim.kpis(), indent=2))
+    result = sim.kpis() | {"reward": reward.total, "reward_components": dict(reward.totals)}
+    print(json.dumps(result, indent=2))
     return 0
 
 

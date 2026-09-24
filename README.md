@@ -67,6 +67,28 @@ orders:
   - {product: frame, quantity: 5, deadline: 60}
 ```
 
+### Reward
+
+The optional `reward` section weights the terms of the RL reward. All weights are non-negative;
+costs are subtracted.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `revenue` | 1.0 | per unit of sales revenue |
+| `material_cost` | 1.0 | per unit of raw material spend |
+| `holding_cost` | 0.0 | per intermediate part in the buffer per tick |
+| `lateness` | 0.0 | per missing unit of an overdue order per tick |
+| `idle` | 0.0 | per idle machine slot per tick |
+| `shaping` | 0.0 | weight of potential-based shaping, potential = WIP valued at raw material cost |
+| `gamma` | 0.99 | discount factor for shaping; should match the agent's gamma |
+| `scale` | 1.0 | multiplies the total reward |
+
+Shaping moves the credit for material spend closer to the moment the WIP is created and does not change
+the optimal policy. Summed over an episode it adds roughly `-(1 - gamma)` times the average WIP value per step,
+so compare policies on the unshaped components. `fertigung simulate` prints the breakdown.
+
+### Validation
+
 `fertigung validate` reports structural problems, e.g. transformations that no machine can perform,
 products that cannot be produced, transformations that need more intermediates than the buffer holds,
 and final products that sell below their raw material cost.

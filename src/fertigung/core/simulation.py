@@ -54,6 +54,9 @@ class Ledger:
     material_cost: float = 0.0
     busy_slot_ticks: int = 0
     blocked_slot_ticks: int = 0
+    idle_slot_ticks: int = 0
+    holding_part_ticks: int = 0
+    late_unit_ticks: int = 0
     shipped: Counter = field(default_factory=Counter)
 
 
@@ -137,6 +140,7 @@ class Simulation:
 
     def advance(self):
         self.time += 1
+        self.ledger.idle_slot_ticks += sum(self.free_slots(m) for m in range(len(self.jobs)))
         finished = []
         for m, jobs in enumerate(self.jobs):
             for job in jobs:
@@ -163,11 +167,18 @@ class Simulation:
                 job.blocked_since = self.time
                 self._log("blocked", m, job.transformation)
 
-    def run(self, policy, ticks: int):
+        self.ledger.holding_part_ticks += len(self.buffer)
+        self.ledger.late_unit_ticks += sum(
+            o.quantity - o.delivered for o in self.orders if o.open and self.time > o.deadline
+        )
+
+    def run(self, policy, ticks: int, reward=None):
         for _ in range(ticks):
             while (choice := policy(self)) is not None:
                 self.dispatch(*choice)
             self.advance()
+            if reward is not None:
+                reward(self)
 
     def kpis(self) -> dict:
         slot_ticks = sum(m.slots for m in self.plant.machines) * max(self.time, 1)
@@ -180,6 +191,7 @@ class Simulation:
             "wip": len(self.buffer) + sum(len(jobs) for jobs in self.jobs),
             "utilization": self.ledger.busy_slot_ticks / slot_ticks,
             "blocked_ratio": self.ledger.blocked_slot_ticks / slot_ticks,
+            "avg_buffer": self.ledger.holding_part_ticks / max(self.time, 1),
             "orders_completed": sum(not o.open for o in self.orders),
             "orders_on_time": sum(not o.open and o.lateness(self.time) == 0 for o in self.orders),
             "total_lateness": sum(o.lateness(self.time) for o in self.orders),

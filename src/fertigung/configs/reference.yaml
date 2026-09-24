@@ -67,3 +67,13 @@ orders:
   - {product: fp2, quantity: 3, deadline: 150}
   - {product: fp1, quantity: 3, deadline: 250}
   - {product: fp2, quantity: 3, deadline: 300}
+
+reward:
+  revenue: 1.0
+  material_cost: 1.0
+  holding_cost: 0.5
+  lateness: 5.0
+  idle: 0.0
+  shaping: 1.0
+  gamma: 0.99
+  scale: 0.01

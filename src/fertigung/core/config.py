@@ -42,6 +42,17 @@ class OrderConfig(_Model):
     price: float | None = Field(None, ge=0, description="Overrides the product's sale price")
 
 
+class RewardConfig(_Model):
+    revenue: float = Field(1.0, ge=0, description="Per unit of sales revenue")
+    material_cost: float = Field(1.0, ge=0, description="Per unit of raw material spend")
+    holding_cost: float = Field(0.0, ge=0, description="Per intermediate part in the buffer per tick")
+    lateness: float = Field(0.0, ge=0, description="Per missing unit of an overdue order per tick")
+    idle: float = Field(0.0, ge=0, description="Per idle machine slot per tick")
+    shaping: float = Field(0.0, ge=0, description="Weight of potential-based shaping on WIP value")
+    gamma: float = Field(0.99, gt=0, le=1, description="Discount factor used for shaping")
+    scale: float = Field(1.0, gt=0, description="Multiplies the total reward")
+
+
 class PlantConfig(_Model):
     name: str
     buffer_capacity: int = Field(ge=1)
@@ -50,6 +61,7 @@ class PlantConfig(_Model):
     machine_types: list[MachineTypeConfig]
     machines: list[MachineConfig] = Field(min_length=1)
     orders: list[OrderConfig] = []
+    reward: RewardConfig = RewardConfig()
 
     @model_validator(mode="after")
     def _check_references(self):
