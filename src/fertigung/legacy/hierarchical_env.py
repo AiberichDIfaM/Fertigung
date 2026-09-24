@@ -1,7 +1,7 @@
 import gymnasium as gym
 import numpy as np
 
-from fertigung.rl.flexible_jobshop_env import FlexibleJobShopEnv
+from fertigung.legacy.flexible_jobshop_env import FlexibleJobShopEnv
 
 
 class HighLevelEnv(gym.Env):

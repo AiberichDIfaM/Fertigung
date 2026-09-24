@@ -5,8 +5,8 @@ from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from fertigung.core.reference_plant import anlage
-from fertigung.rl.hierarchical_env import HighLevelEnv
+from fertigung.legacy.reference_plant import anlage
+from fertigung.legacy.hierarchical_env import HighLevelEnv
 
 # Modell-Pfade
 MODEL_LL = "lowlevel_ppo_model.zip"

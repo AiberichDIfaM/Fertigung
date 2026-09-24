@@ -1,8 +1,8 @@
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 
-from fertigung.core.reference_plant import anlage
-from fertigung.rl.hierarchical_env import HighLevelEnv
+from fertigung.legacy.reference_plant import anlage
+from fertigung.legacy.hierarchical_env import HighLevelEnv
 
 # Lade Modelle
 model_ll = MaskablePPO.load("lowlevel_ppo_model.zip")

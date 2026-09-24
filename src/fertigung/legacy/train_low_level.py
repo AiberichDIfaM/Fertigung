@@ -6,8 +6,8 @@ from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from fertigung.core.reference_plant import anlage
-from fertigung.rl.flexible_jobshop_env import FlexibleJobShopEnv
+from fertigung.legacy.reference_plant import anlage
+from fertigung.legacy.flexible_jobshop_env import FlexibleJobShopEnv
 
 # Definiere Subgoals: alle PartTypes außer elementaren Rohmaterialien
 elementary = {"a1", "a2", "a4", "a5", "a6", "a8", "a0"}

@@ -1,7 +1,7 @@
 [project]
 name = "fertigung"
 version = "0.1.0"
-description = "Reinforcement-Learning-Steuerung für flexible Job-Shop-Fertigungsanlagen"
+description = "Reinforcement learning control for flexible job-shop manufacturing plants"
 readme = "README.md"
 license = "0BSD"
 license-files = ["LICENSE"]
@@ -9,6 +9,8 @@ requires-python = ">=3.11"
 dependencies = [
     "gymnasium>=0.29.1,<1.2",
     "networkx>=3.4",
+    "pydantic>=2.7",
+    "pyyaml>=6",
     "numpy>=1.26,<3",
     "sb3-contrib>=2.6,<3",
     "stable-baselines3>=2.6,<3",
@@ -16,7 +18,7 @@ dependencies = [
 ]
 
 [project.scripts]
-fertigung = "fertigung.__main__:main"
+fertigung = "fertigung.cli:main"
 
 [dependency-groups]
 dev = [
@@ -42,6 +44,7 @@ torch = [{ index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }]
 [tool.ruff]
 line-length = 110
 target-version = "py311"
+extend-exclude = ["src/fertigung/legacy"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

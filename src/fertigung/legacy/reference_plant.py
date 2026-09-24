@@ -1,4 +1,4 @@
-from fertigung.core import classes
+from fertigung.legacy import classes
 
 # --- Erstelle PartTypes ---
 # Für die "a"-Teile:
