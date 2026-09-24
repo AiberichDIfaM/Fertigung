@@ -1,0 +1,12 @@
+services:
+  fertigung:
+    build: .
+    image: ghcr.io/aiberichdafm/fertigung:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - fertigung-data:/data
+    restart: unless-stopped
+
+volumes:
+  fertigung-data:

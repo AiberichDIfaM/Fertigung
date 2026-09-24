@@ -38,6 +38,15 @@ uv run fertigung evaluate --model models/ref    # compare it with the heuristic 
 uv run fertigung serve                          # UI and API on http://127.0.0.1:8000, API docs at /docs
 ```
 
+With Docker:
+
+```sh
+docker compose up -d                            # builds the image, UI and API on http://localhost:8000
+```
+
+The image (`python:3.12-slim`, CPU-only PyTorch, about 1.5 GB) runs as a non-root user, stores everything in
+the volume mounted at `/data` and has a health check on `/health`.
+
 Development:
 
 ```sh
