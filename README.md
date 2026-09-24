@@ -5,8 +5,7 @@ Plants are described declaratively (part types, transformations, machines, order
 simulation core executes them, and RL agents learn when to start which transformation on which machine.
 
 > Work in progress: the project is being converted from an experiment into a product
-> (API, UI, Docker image). The previous hierarchical PPO prototype lives in `fertigung.legacy`
-> until the new RL layer replaces it.
+> (API, UI, Docker image).
 
 ## Operating philosophy
 
@@ -32,8 +31,10 @@ Requires [uv](https://docs.astral.sh/uv/).
 ```sh
 uv sync
 uv run fertigung validate                       # check the bundled reference plant
-uv run fertigung simulate --ticks 300           # run it with the pull heuristic, print KPIs
+uv run fertigung simulate                       # run it with the pull heuristic, print KPIs
 uv run fertigung simulate my_plant.yaml --events
+uv run fertigung train --out models/ref         # train a MaskablePPO dispatcher
+uv run fertigung evaluate --model models/ref    # compare it with the heuristic baselines
 ```
 
 Development:
@@ -93,15 +94,41 @@ so compare policies on the unshaped components. `fertigung simulate` prints the 
 products that cannot be produced, transformations that need more intermediates than the buffer holds,
 and final products that sell below their raw material cost.
 
+## Reinforcement learning
+
+`JobShopEnv` (`fertigung.rl.env`) is a flat Gymnasium env over the simulation:
+
+- **Actions**: `0` advances time by one tick, every other action starts one (machine, transformation) pair.
+  Invalid actions are masked (`action_masks()`, used by MaskablePPO); decisions where waiting is the only
+  legal action are skipped.
+- **Observation**: buffer counts per intermediate, parts in progress per output, running jobs per pair,
+  free and blocked slots per machine, outstanding quantity and deadline slack per final product,
+  elapsed time and buffer fill, all scaled to [-1, 1].
+- **Episode**: `horizon` ticks, by default 1.2 x the last order deadline.
+
+Training first imitates the `pull` heuristic (behavior cloning on expert-labelled rollouts, including
+states reached by random deviations, with value pretraining on the observed returns) and then fine-tunes
+with MaskablePPO. The imitated policy is the initial best model, so fine-tuning can only replace it with a
+better one. Without pretraining (`--no-pretrain`), PPO on the reference plant settles on producing nothing:
+random exploration fills the buffer with parts that cannot be combined long before any product is sold.
+
+`fertigung train` writes a model directory with `model.zip` (best policy seen during evaluation),
+`meta.json` (plant, horizon, training settings, final evaluation), `progress.csv` and checkpoints.
+A model only fits plants with the same machines, transformations and final products.
+
+Baselines in `fertigung.heuristics`: `pull` (explodes the bill of materials of the next due product and
+produces only net requirements), `fifo` (oldest buffered part first) and `random`.
+
 ## Layout
 
 ```
 src/fertigung/
-├── core/          # config schema, plant model, simulation, validation
+├── core/          # config schema, plant model, simulation, reward, validation
+├── rl/            # Gymnasium env, training, model loading
 ├── configs/       # bundled reference plant
 ├── heuristics.py  # baseline dispatch policies
-├── cli.py
-└── legacy/        # previous hierarchical PPO prototype (to be replaced)
+├── evaluation.py  # KPIs per policy
+└── cli.py
 ```
 
 ## License

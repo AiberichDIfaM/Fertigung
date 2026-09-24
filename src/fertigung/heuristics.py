@@ -1,4 +1,5 @@
 import math
+import random
 from collections import Counter
 from functools import cache
 
@@ -34,7 +35,7 @@ def pull(sim: Simulation) -> tuple[int, int] | None:
     """Explode the bill of materials of the next final product and only produce net requirements."""
     plant = sim.plant
     producers = _producers(plant)
-    in_flight = Counter(plant.transformations[job.transformation].output for jobs in sim.jobs for job in jobs)
+    in_flight = _in_flight(sim)
     target = _target(sim, in_flight)
     if target is None:
         return None
@@ -69,4 +70,61 @@ def pull(sim: Simulation) -> tuple[int, int] | None:
     return best
 
 
-POLICIES = {"pull": pull}
+def _in_flight(sim: Simulation) -> Counter:
+    return Counter(sim.plant.transformations[job.transformation].output for jobs in sim.jobs for job in jobs)
+
+
+def fifo(sim: Simulation) -> tuple[int, int] | None:
+    """Consume the oldest buffered part first; otherwise start raw-only work for the scarcest part type."""
+    plant = sim.plant
+    valid = sim.valid_dispatches()
+    oldest = {}
+    for part in sim.buffer:
+        oldest.setdefault(part.type, part.id)
+
+    consuming = [
+        (min(oldest[p] for p in plant.transformations[t].inputs if not plant.is_raw(p)), m, t)
+        for m, t in valid
+        if any(not plant.is_raw(p) for p in plant.transformations[t].inputs)
+    ]
+    if consuming:
+        _, m, t = min(consuming)
+        return m, t
+
+    in_flight = _in_flight(sim)
+    reserved = len(sim.buffer) + sum(n for p, n in in_flight.items() if not plant.is_final(p))
+    counts = sim.buffer_counts() + in_flight
+    raw_only = [
+        (counts[plant.transformations[t].output], m, t)
+        for m, t in valid
+        if plant.is_final(plant.transformations[t].output) or reserved < plant.buffer_capacity
+    ]
+    if raw_only:
+        _, m, t = min(raw_only)
+        return m, t
+    return None
+
+
+class RandomPolicy:
+    """Uniform over valid dispatches; waits with probability `wait`."""
+
+    def __init__(self, seed: int | None = None, wait: float = 0.3):
+        self.rng = random.Random(seed)
+        self.wait = wait
+
+    def __call__(self, sim: Simulation) -> tuple[int, int] | None:
+        valid = sim.valid_dispatches()
+        if not valid or self.rng.random() < self.wait:
+            return None
+        return self.rng.choice(valid)
+
+
+POLICIES = {
+    "pull": lambda seed=None: pull,
+    "fifo": lambda seed=None: fifo,
+    "random": lambda seed=None: RandomPolicy(seed),
+}
+
+
+def make_policy(name: str, seed: int | None = None):
+    return POLICIES[name](seed)

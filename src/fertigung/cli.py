@@ -3,19 +3,31 @@ import json
 import sys
 
 from fertigung.core.config import load_config, reference_config
-from fertigung.core.plant import Plant
-from fertigung.core.reward import Reward
-from fertigung.core.simulation import Simulation
 from fertigung.core.validation import validate
-from fertigung.heuristics import POLICIES
+from fertigung.evaluation import compare, format_table, run_episode
+from fertigung.heuristics import POLICIES, make_policy
 
 
-def _config(path):
-    return load_config(path) if path else reference_config()
+def _default_horizon(config):
+    from fertigung.rl.env import default_horizon
+
+    return default_horizon(config)
+
+
+def _load(args):
+    """Plant config, trained model (or None) and episode length from the CLI arguments."""
+    trained = None
+    if getattr(args, "model", None):
+        from fertigung.rl.model import TrainedModel
+
+        trained = TrainedModel(args.model)
+    config = load_config(args.config) if args.config else trained.config if trained else reference_config()
+    ticks = args.ticks or (trained.horizon if trained else _default_horizon(config))
+    return config, trained, ticks
 
 
 def cmd_validate(args) -> int:
-    issues = validate(_config(args.config))
+    issues = validate(load_config(args.config) if args.config else reference_config())
     for issue in issues:
         print(f"{issue.level}: {issue.message}")
     if not issues:
@@ -24,9 +36,9 @@ def cmd_validate(args) -> int:
 
 
 def cmd_simulate(args) -> int:
-    sim = Simulation(Plant(_config(args.config)))
-    reward = Reward(sim)
-    sim.run(POLICIES[args.policy], args.ticks, reward)
+    config, trained, ticks = _load(args)
+    policy = trained.policy(config) if trained else make_policy(args.policy, args.seed)
+    sim, reward = run_episode(config, policy, ticks)
     if args.events:
         for e in sim.events:
             print(json.dumps(e.__dict__))
@@ -35,20 +47,64 @@ def cmd_simulate(args) -> int:
     return 0
 
 
+def cmd_train(args) -> int:
+    from fertigung.rl.train import TrainingConfig, train
+
+    config = load_config(args.config) if args.config else reference_config()
+    cfg = TrainingConfig(
+        timesteps=args.timesteps,
+        seed=args.seed,
+        n_envs=args.n_envs,
+        horizon=args.ticks,
+        pretrain=None if args.no_pretrain else "pull",
+    )
+    out = train(config, cfg, args.out)
+    print(f"model written to {out}")
+    return 0
+
+
+def cmd_evaluate(args) -> int:
+    config, trained, ticks = _load(args)
+    extra = {"model": lambda seed: trained.policy(config)} if trained else None
+    print(f"{config.name}, {ticks} ticks")
+    print(format_table(compare(config, ticks, extra, args.episodes)))
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="fertigung")
     sub = parser.add_subparsers(dest="command", required=True)
+    config_help = "YAML/JSON plant config (default: the model's plant or the reference plant)"
 
     p = sub.add_parser("validate", help="check a plant configuration")
-    p.add_argument("config", nargs="?", help="YAML/JSON plant config (default: reference plant)")
+    p.add_argument("config", nargs="?", help=config_help)
     p.set_defaults(func=cmd_validate)
 
-    p = sub.add_parser("simulate", help="run a plant with a heuristic policy")
-    p.add_argument("config", nargs="?", help="YAML/JSON plant config (default: reference plant)")
+    p = sub.add_parser("simulate", help="run one episode with a heuristic or a trained model")
+    p.add_argument("config", nargs="?", help=config_help)
     p.add_argument("--policy", choices=sorted(POLICIES), default="pull")
-    p.add_argument("--ticks", type=int, default=300)
+    p.add_argument("--model", help="trained model directory (overrides --policy)")
+    p.add_argument("--ticks", type=int, help="episode length (default: model horizon or 1.2 x last deadline)")
+    p.add_argument("--seed", type=int, default=0)
     p.add_argument("--events", action="store_true", help="print the event log as JSON lines")
     p.set_defaults(func=cmd_simulate)
+
+    p = sub.add_parser("train", help="train a MaskablePPO dispatcher")
+    p.add_argument("config", nargs="?", help=config_help)
+    p.add_argument("--timesteps", type=int, default=500_000)
+    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--n-envs", type=int, default=4)
+    p.add_argument("--ticks", type=int, help="episode length (default: 1.2 x last deadline)")
+    p.add_argument("--out", help="output directory (default: models/<plant>-<timestamp>)")
+    p.add_argument("--no-pretrain", action="store_true", help="skip imitation of the pull heuristic")
+    p.set_defaults(func=cmd_train)
+
+    p = sub.add_parser("evaluate", help="compare heuristics and optionally a trained model")
+    p.add_argument("config", nargs="?", help=config_help)
+    p.add_argument("--model", help="trained model directory")
+    p.add_argument("--ticks", type=int, help="episode length (default: model horizon or 1.2 x last deadline)")
+    p.add_argument("--episodes", type=int, default=5, help="episodes for the random baseline")
+    p.set_defaults(func=cmd_evaluate)
 
     args = parser.parse_args(argv)
     return args.func(args)

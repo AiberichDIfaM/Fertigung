@@ -44,7 +44,6 @@ torch = [{ index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }]
 [tool.ruff]
 line-length = 110
 target-version = "py311"
-extend-exclude = ["src/fertigung/legacy"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
