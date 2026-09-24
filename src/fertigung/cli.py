@@ -71,6 +71,15 @@ def cmd_evaluate(args) -> int:
     return 0
 
 
+def cmd_serve(args) -> int:
+    import uvicorn
+
+    from fertigung.api.app import create_app
+
+    uvicorn.run(create_app(args.data_dir), host=args.host, port=args.port)
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="fertigung")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -105,6 +114,12 @@ def main(argv=None) -> int:
     p.add_argument("--ticks", type=int, help="episode length (default: model horizon or 1.2 x last deadline)")
     p.add_argument("--episodes", type=int, default=5, help="episodes for the random baseline")
     p.set_defaults(func=cmd_evaluate)
+
+    p = sub.add_parser("serve", help="run the HTTP API")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8000)
+    p.add_argument("--data-dir", help="database and models (default: $FERTIGUNG_DATA_DIR or ./data)")
+    p.set_defaults(func=cmd_serve)
 
     args = parser.parse_args(argv)
     return args.func(args)

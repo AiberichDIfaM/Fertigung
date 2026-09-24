@@ -35,6 +35,7 @@ uv run fertigung simulate                       # run it with the pull heuristic
 uv run fertigung simulate my_plant.yaml --events
 uv run fertigung train --out models/ref         # train a MaskablePPO dispatcher
 uv run fertigung evaluate --model models/ref    # compare it with the heuristic baselines
+uv run fertigung serve                          # HTTP API on http://127.0.0.1:8000, docs at /docs
 ```
 
 Development:
@@ -119,12 +120,35 @@ A model only fits plants with the same machines, transformations and final produ
 Baselines in `fertigung.heuristics`: `pull` (explodes the bill of materials of the next due product and
 produces only net requirements), `fifo` (oldest buffered part first) and `random`.
 
+## HTTP API
+
+`fertigung serve` starts a FastAPI server. Plants, training jobs, models and simulation results are stored
+in `$FERTIGUNG_DATA_DIR` (default `./data`): a SQLite database plus one directory per trained model.
+The reference plant is added on first start. Interactive documentation is served at `/docs`.
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/health` | liveness check |
+| GET, POST | `/plants` | list / create plants (body: plant config) |
+| GET, PUT, DELETE | `/plants/{id}` | read / replace / delete a plant |
+| POST | `/plants/validate`, `/plants/{id}/validate` | issues, part classification, material costs, graph edges |
+| GET, POST | `/training-jobs` | list / queue a training job (`plant_id`, optional `training` settings) |
+| GET, DELETE | `/training-jobs/{id}` | status, progress and reward curve / cancel |
+| GET, DELETE | `/models/{id}` | model metadata incl. evaluation / delete |
+| GET | `/models`, `/models/{id}/download` | list models / download as zip |
+| POST | `/simulations` | run one episode with `pull`, `fifo`, `random` or `model`; KPIs, orders, Gantt bars, events |
+| GET | `/simulations/{id}` | stored simulation result |
+| POST | `/evaluations` | compare the heuristics and optionally a model on a plant |
+
+Training jobs run one at a time in a separate process; progress is reported every 2048 steps.
+
 ## Layout
 
 ```
 src/fertigung/
 ├── core/          # config schema, plant model, simulation, reward, validation
 ├── rl/            # Gymnasium env, training, model loading
+├── api/           # FastAPI app, SQLite store, training worker
 ├── configs/       # bundled reference plant
 ├── heuristics.py  # baseline dispatch policies
 ├── evaluation.py  # KPIs per policy

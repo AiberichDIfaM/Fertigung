@@ -98,6 +98,7 @@ def train(
     if callback is not None:
         callbacks.append(callback)
     model.learn(cfg.timesteps, callback=callbacks)
+    model.logger.close()
 
     best = out / "best" / "best_model.zip"
     if best.exists():

@@ -12,6 +12,7 @@ class Part:
 
 @dataclass
 class Job:
+    id: int
     transformation: int
     inputs: list[Part]
     remaining: int
@@ -46,6 +47,7 @@ class Event:
     part_type: str | None = None
     order: int | None = None
     amount: float = 0.0
+    job: int | None = None
 
 
 @dataclass
@@ -89,6 +91,7 @@ class Simulation:
         self.ledger = Ledger()
         self.events: list[Event] = []
         self._next_id = 0
+        self._next_job = 0
 
     def buffer_counts(self) -> Counter:
         return Counter(p.type for p in self.buffer)
@@ -133,10 +136,11 @@ class Simulation:
                 inputs += [self._new_part(p) for _ in range(n)]
                 self.ledger.material_cost += n * self.plant.cost[p]
 
-        self.jobs[m].append(Job(t, inputs, transformation.duration))
-        self._log(
-            "dispatch", m, t, amount=sum(self.plant.cost[p.type] for p in inputs if self.plant.is_raw(p.type))
-        )
+        self._next_job += 1
+        job = Job(self._next_job, t, inputs, transformation.duration)
+        self.jobs[m].append(job)
+        cost = sum(self.plant.cost[p.type] for p in inputs if self.plant.is_raw(p.type))
+        self._log("dispatch", m, job, amount=cost)
 
     def advance(self):
         self.time += 1
@@ -162,10 +166,10 @@ class Simulation:
                 part = self._new_part(output)
                 self.buffer.append(part)
                 self.jobs[m].remove(job)
-                self._log("complete", m, job.transformation, part)
+                self._log("complete", m, job, part)
             elif job.blocked_since is None:
                 job.blocked_since = self.time
-                self._log("blocked", m, job.transformation)
+                self._log("blocked", m, job)
 
         self.ledger.holding_part_ticks += len(self.buffer)
         self.ledger.late_unit_ticks += sum(
@@ -211,13 +215,14 @@ class Simulation:
                 o.completed_at = self.time
         self.ledger.revenue += amount
         self.ledger.shipped[part.type] += 1
-        self._log("ship", m, job.transformation, part, order=order, amount=amount)
+        self._log("ship", m, job, part, order=order, amount=amount)
 
     def _new_part(self, part_type: str) -> Part:
         self._next_id += 1
         return Part(self._next_id, part_type)
 
-    def _log(self, kind, m, t, part=None, order=None, amount=0.0):
+    def _log(self, kind, m, job, part=None, order=None, amount=0.0):
+        t = job.transformation
         self.events.append(
             Event(
                 self.time,
@@ -228,5 +233,6 @@ class Simulation:
                 part.type if part else self.plant.transformations[t].output,
                 order,
                 amount,
+                job.id,
             )
         )
