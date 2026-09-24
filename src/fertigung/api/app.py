@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Response
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from fertigung.api.store import Store, now
@@ -23,6 +25,8 @@ from fertigung.heuristics import POLICIES, make_policy
 from fertigung.rl.env import default_horizon
 from fertigung.rl.model import META_FILE, MODEL_FILE, TrainedModel
 from fertigung.rl.train import TrainingConfig
+
+UI_DIR = Path(__file__).parent.parent / "ui"
 
 
 class TrainingJobCreate(BaseModel):
@@ -150,6 +154,12 @@ def create_app(data_dir: str | Path | None = None, start_worker: bool = True) ->
             return trained.policy(config)
         except ValueError as e:
             raise HTTPException(422, str(e)) from e
+
+    @app.get("/", include_in_schema=False)
+    def root():
+        return RedirectResponse("/ui/")
+
+    app.mount("/ui", StaticFiles(directory=UI_DIR, html=True), name="ui")
 
     @app.get("/health")
     def health():

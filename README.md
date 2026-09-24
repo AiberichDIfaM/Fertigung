@@ -35,7 +35,7 @@ uv run fertigung simulate                       # run it with the pull heuristic
 uv run fertigung simulate my_plant.yaml --events
 uv run fertigung train --out models/ref         # train a MaskablePPO dispatcher
 uv run fertigung evaluate --model models/ref    # compare it with the heuristic baselines
-uv run fertigung serve                          # HTTP API on http://127.0.0.1:8000, docs at /docs
+uv run fertigung serve                          # UI and API on http://127.0.0.1:8000, API docs at /docs
 ```
 
 Development:
@@ -120,6 +120,19 @@ A model only fits plants with the same machines, transformations and final produ
 Baselines in `fertigung.heuristics`: `pull` (explodes the bill of materials of the next due product and
 produces only net requirements), `fifo` (oldest buffered part first) and `random`.
 
+## Web UI
+
+`fertigung serve` also serves a browser UI at `/` (static HTML with Alpine.js, Chart.js and Cytoscape.js,
+vendored in `src/fertigung/ui/vendor`, no build step):
+
+- **Plant**: edit part types, transformations, machine types and machines; live validation and production graph
+  with material cost per part; save, duplicate, import/export JSON.
+- **Orders & reward**: orders and reward weights (fields and defaults come from the API schema).
+- **Training**: start jobs with hyperparameters, follow progress and the reward curve, cancel.
+- **Simulation**: run the current (also unsaved) plant with a heuristic or a trained model; KPIs, orders,
+  reward components, machine schedule (Gantt) and event log; compare against the baselines.
+- **Models**: evaluation summary, simulate, download, delete.
+
 ## HTTP API
 
 `fertigung serve` starts a FastAPI server. Plants, training jobs, models and simulation results are stored
@@ -149,6 +162,7 @@ src/fertigung/
 ├── core/          # config schema, plant model, simulation, reward, validation
 ├── rl/            # Gymnasium env, training, model loading
 ├── api/           # FastAPI app, SQLite store, training worker
+├── ui/            # browser UI served at /
 ├── configs/       # bundled reference plant
 ├── heuristics.py  # baseline dispatch policies
 ├── evaluation.py  # KPIs per policy

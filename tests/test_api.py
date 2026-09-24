@@ -10,6 +10,7 @@ def test_plants_simulations_evaluations(tmp_path):
     client = TestClient(create_app(tmp_path, start_worker=False))
     [plant] = client.get("/plants").json()
     assert plant["name"] == "reference"
+    assert "x-data" in client.get("/").text
 
     config = reference_config().model_dump()
     config["machine_types"][0]["transformations"].remove("tr10")
