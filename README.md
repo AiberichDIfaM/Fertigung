@@ -212,7 +212,7 @@ curl -H "X-API-Key: change-me" http://localhost:8000/plants
 
 ## Docker
 
-The image (`python:3.12-slim`, CPU-only PyTorch, about 1.5 GB) runs as a non-root user, keeps all state in the
+The image (`python:3.14-slim`, CPU-only PyTorch, about 1.5 GB) runs as a non-root user, keeps all state in the
 volume at `/data` and has a health check on `/health`. `docker-compose.yml` builds it, maps port 8000 and passes
 `FERTIGUNG_API_KEY` through.
 
