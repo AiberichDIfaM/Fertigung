@@ -1,5 +1,7 @@
 # Fertigung – RL for Flexible Job-Shop Scheduling
 
+[![CI](https://github.com/AiberichDafM/Fertigung/actions/workflows/ci.yml/badge.svg)](https://github.com/AiberichDafM/Fertigung/actions/workflows/ci.yml)
+
 A reinforcement learning based controller for job-shop manufacturing on generic production graphs.
 Plants are described declaratively (part types, transformations, machines, orders); a discrete-time
 simulation core executes them, and RL agents learn when to start which transformation on which machine.
@@ -42,6 +44,7 @@ With Docker:
 
 ```sh
 docker compose up -d                            # builds the image, UI and API on http://localhost:8000
+docker run -p 8000:8000 -v fertigung-data:/data ghcr.io/aiberichdafm/fertigung:latest   # prebuilt image
 ```
 
 The image (`python:3.12-slim`, CPU-only PyTorch, about 1.5 GB) runs as a non-root user, stores everything in
@@ -163,6 +166,17 @@ The reference plant is added on first start. Interactive documentation is served
 | POST | `/evaluations` | compare the heuristics and optionally a model on a plant |
 
 Training jobs run one at a time in a separate process; progress is reported every 2048 steps.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on pull requests, pushes to `main` and `v*` tags:
+
+1. **lint**: `ruff check`, `ruff format --check`
+2. **test**: `pytest` (includes a short training run and an API training job)
+3. **docker**: builds the image, starts it and checks health, UI and a simulation; on pushes it publishes
+   to `ghcr.io/aiberichdafm/fertigung` as `latest` (main), `<version>` and `<major>.<minor>` (tags) and `sha-<commit>`.
+
+Dependabot keeps the uv lockfile, the GitHub Actions and the Docker base image up to date.
 
 ## Layout
 
