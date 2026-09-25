@@ -4,12 +4,33 @@
 
 A reinforcement learning based controller for job-shop manufacturing on generic production graphs.
 Plants are described declaratively (part types, transformations, machines, orders); a discrete-time
-simulation core executes them, and RL agents learn when to start which transformation on which machine.
+simulation core executes them, and a MaskablePPO agent learns when to start which transformation on which
+machine. A web UI and an HTTP API cover the whole loop: model the plant, set orders and reward weights,
+train, simulate and compare against heuristic baselines.
 
-> Work in progress: the project is being converted from an experiment into a product
-> (API, UI, Docker image).
+## Quickstart
 
-## Operating philosophy
+With Docker:
+
+```sh
+docker run -p 8000:8000 -v fertigung-data:/data ghcr.io/aiberichdafm/fertigung:latest
+# or, from a checkout: docker compose up -d
+```
+
+Open http://localhost:8000. The reference plant and a model pretrained on it are available right away.
+
+Locally, with [uv](https://docs.astral.sh/uv/):
+
+```sh
+uv sync
+uv run fertigung serve                             # UI and API on http://127.0.0.1:8000, API docs at /docs
+uv run fertigung validate                          # check the reference plant (or pass a YAML/JSON file)
+uv run fertigung simulate --policy pull            # run it with a heuristic and print KPIs
+uv run fertigung evaluate --model reference        # compare the bundled model with the heuristics
+uv run fertigung train my_plant.yaml --out models/my_plant
+```
+
+## Concepts
 
 - A factory (*Anlage*) consists of **machines**. Each machine has a **machine type** that defines how
   many jobs it can run in parallel (**slots**) and which **transformations** it can perform.
@@ -26,40 +47,30 @@ simulation core executes them, and RL agents learn when to start which transform
 Manufacturing is therefore the progression of parts along the production graph, and the scheduling
 challenge is to keep the limited buffer filled with parts that can actually be combined.
 
-## Quickstart
+## Architecture
 
-Requires [uv](https://docs.astral.sh/uv/).
-
-```sh
-uv sync
-uv run fertigung validate                       # check the bundled reference plant
-uv run fertigung simulate                       # run it with the pull heuristic, print KPIs
-uv run fertigung simulate my_plant.yaml --events
-uv run fertigung train --out models/ref         # train a MaskablePPO dispatcher
-uv run fertigung evaluate --model models/ref    # compare it with the heuristic baselines
-uv run fertigung serve                          # UI and API on http://127.0.0.1:8000, API docs at /docs
+```
+ browser UI (/ui)          CLI (fertigung ...)
+        │                        │
+        ▼                        │
+ FastAPI app (api/) ─────────────┤
+   │  SQLite store + model dirs  │
+   │  training worker ──► spawned training process
+   ▼                             ▼
+ evaluation.py, heuristics.py   rl/  (JobShopEnv, behavior cloning, MaskablePPO, TrainedModel)
+        │                        │
+        └──────────┬─────────────┘
+                   ▼
+ core/  config schema → Plant → Simulation → Reward, validation
 ```
 
-With Docker:
-
-```sh
-docker compose up -d                            # builds the image, UI and API on http://localhost:8000
-docker run -p 8000:8000 -v fertigung-data:/data ghcr.io/aiberichdafm/fertigung:latest   # prebuilt image
-```
-
-The image (`python:3.12-slim`, CPU-only PyTorch, about 1.5 GB) runs as a non-root user, stores everything in
-the volume mounted at `/data` and has a health check on `/health`.
-
-Development:
-
-```sh
-uv run pytest
-uv run ruff check && uv run ruff format --check
-```
+The simulation core has no Gym or web dependencies; the Gym env, the heuristics and the API are thin layers on
+top of it.
 
 ## Plant configuration
 
-Plants are YAML or JSON files; see [`src/fertigung/configs/reference.yaml`](src/fertigung/configs/reference.yaml).
+Plants are YAML or JSON files (or edited in the UI); see
+[`src/fertigung/configs/reference.yaml`](src/fertigung/configs/reference.yaml).
 
 ```yaml
 name: example
@@ -79,6 +90,9 @@ machines:
   - {name: welder-1, type: welder}
 orders:
   - {product: frame, quantity: 5, deadline: 60}
+reward:
+  holding_cost: 0.5
+  lateness: 5
 ```
 
 ### Reward
@@ -94,26 +108,26 @@ costs are subtracted.
 | `lateness` | 0.0 | per missing unit of an overdue order per tick |
 | `idle` | 0.0 | per idle machine slot per tick |
 | `shaping` | 0.0 | weight of potential-based shaping, potential = WIP valued at raw material cost |
-| `gamma` | 0.99 | discount factor for shaping; should match the agent's gamma |
+| `gamma` | 0.99 | discount factor for shaping; also used as the agent's gamma |
 | `scale` | 1.0 | multiplies the total reward |
 
 Shaping moves the credit for material spend closer to the moment the WIP is created and does not change
 the optimal policy. Summed over an episode it adds roughly `-(1 - gamma)` times the average WIP value per step,
-so compare policies on the unshaped components. `fertigung simulate` prints the breakdown.
+so compare policies on the unshaped reward (`reward_unshaped` in evaluations).
 
 ### Validation
 
-`fertigung validate` reports structural problems, e.g. transformations that no machine can perform,
-products that cannot be produced, transformations that need more intermediates than the buffer holds,
-and final products that sell below their raw material cost.
+`fertigung validate`, `POST /plants/validate` and the UI report structural problems, e.g. transformations that
+no machine can perform, parts that are treated as raw material only because their transformation is unavailable,
+products that cannot be produced, transformations that need more intermediates than the buffer holds, and final
+products that sell below their raw material cost.
 
 ## Reinforcement learning
 
 `JobShopEnv` (`fertigung.rl.env`) is a flat Gymnasium env over the simulation:
 
 - **Actions**: `0` advances time by one tick, every other action starts one (machine, transformation) pair.
-  Invalid actions are masked (`action_masks()`, used by MaskablePPO); decisions where waiting is the only
-  legal action are skipped.
+  Invalid actions are masked (`action_masks()`); decisions where waiting is the only legal action are skipped.
 - **Observation**: buffer counts per intermediate, parts in progress per output, running jobs per pair,
   free and blocked slots per machine, outstanding quantity and deadline slack per final product,
   elapsed time and buffer fill, all scaled to [-1, 1].
@@ -132,9 +146,27 @@ A model only fits plants with the same machines, transformations and final produ
 Baselines in `fertigung.heuristics`: `pull` (explodes the bill of materials of the next due product and
 produces only net requirements), `fifo` (oldest buffered part first) and `random`.
 
+### Reference plant and model
+
+The package ships the reference plant (15 transformations, 10 machines, two final products, four orders) and a
+model trained on it (`src/fertigung/models/reference`, usable as `--model reference`). The server copies both into
+its data directory on first start. Evaluation over the default horizon of 360 ticks:
+
+| Policy | Reward | Unshaped reward | Profit | Products | Orders on time | Avg. buffer |
+|---|---|---|---|---|---|---|
+| **reference model** | **-2.95** | **5.74** | 1280 | **19** | 4/4 | **3.9** |
+| pull | -6.26 | 5.04 | 1380 | 17 | 4/4 | 4.9 |
+| fifo | -113.83 | -104.30 | -370 | 0 | 0/4 | 9.8 |
+| random (5 episodes) | -131.56 | -109.51 | -876 | 0 | 0/4 | 9.9 |
+
+The model makes 13 x fp1 and 6 x fp2 where pull makes 5 x fp1 and 12 x fp2, and keeps less work in progress.
+It was trained with `fertigung train --timesteps 300000 --seed 0`; the best policy appeared after 40k PPO steps.
+PPO fine-tuning does not improve on the imitated policy reliably: with seeds 1 and 2 no evaluation beat it, so
+those runs end up with a pull-equivalent model. Training several seeds and keeping the best is worthwhile.
+
 ## Web UI
 
-`fertigung serve` also serves a browser UI at `/` (static HTML with Alpine.js, Chart.js and Cytoscape.js,
+`fertigung serve` serves a browser UI at `/` (static HTML with Alpine.js, Chart.js and Cytoscape.js,
 vendored in `src/fertigung/ui/vendor`, no build step):
 
 - **Plant**: edit part types, transformations, machine types and machines; live validation and production graph
@@ -147,9 +179,8 @@ vendored in `src/fertigung/ui/vendor`, no build step):
 
 ## HTTP API
 
-`fertigung serve` starts a FastAPI server. Plants, training jobs, models and simulation results are stored
-in `$FERTIGUNG_DATA_DIR` (default `./data`): a SQLite database plus one directory per trained model.
-The reference plant is added on first start. Interactive documentation is served at `/docs`.
+Plants, training jobs, models and simulation results are stored in `$FERTIGUNG_DATA_DIR` (default `./data`,
+`/data` in the image): a SQLite database plus one directory per model. Interactive documentation is served at `/docs`.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -167,7 +198,30 @@ The reference plant is added on first start. Interactive documentation is served
 
 Training jobs run one at a time in a separate process; progress is reported every 2048 steps.
 
-## Continuous integration
+### Authentication
+
+Set `FERTIGUNG_API_KEY` to require the header `X-API-Key: <key>` on every endpoint except `/health`, the UI
+files and the API docs. The UI asks for the key once and keeps it in the browser's local storage; in `/docs`
+use *Authorize*. Without the variable the API is open, and `fertigung serve` warns when it listens on a
+public interface.
+
+```sh
+FERTIGUNG_API_KEY=change-me docker compose up -d
+curl -H "X-API-Key: change-me" http://localhost:8000/plants
+```
+
+## Docker
+
+The image (`python:3.12-slim`, CPU-only PyTorch, about 1.5 GB) runs as a non-root user, keeps all state in the
+volume at `/data` and has a health check on `/health`. `docker-compose.yml` builds it, maps port 8000 and passes
+`FERTIGUNG_API_KEY` through.
+
+## Development
+
+```sh
+uv run pytest
+uv run ruff check && uv run ruff format --check
+```
 
 `.github/workflows/ci.yml` runs on pull requests, pushes to `main` and `v*` tags:
 
@@ -178,15 +232,14 @@ Training jobs run one at a time in a separate process; progress is reported ever
 
 Dependabot keeps the uv lockfile, the GitHub Actions and the Docker base image up to date.
 
-## Layout
-
 ```
 src/fertigung/
 ├── core/          # config schema, plant model, simulation, reward, validation
-├── rl/            # Gymnasium env, training, model loading
+├── rl/            # Gymnasium env, behavior cloning, training, model loading
 ├── api/           # FastAPI app, SQLite store, training worker
 ├── ui/            # browser UI served at /
 ├── configs/       # bundled reference plant
+├── models/        # bundled reference model
 ├── heuristics.py  # baseline dispatch policies
 ├── evaluation.py  # KPIs per policy
 └── cli.py

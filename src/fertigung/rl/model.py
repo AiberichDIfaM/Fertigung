@@ -10,11 +10,22 @@ from fertigung.rl.env import Observer
 
 MODEL_FILE = "model.zip"
 META_FILE = "meta.json"
+BUNDLED_DIR = Path(__file__).parent.parent / "models"
+
+
+def bundled_model_path(name: str = "reference") -> Path:
+    return BUNDLED_DIR / name
+
+
+def model_path(name_or_path: str | Path) -> Path:
+    """A model directory, or the name of a model bundled with the package (e.g. "reference")."""
+    path = Path(name_or_path)
+    return path if path.exists() else bundled_model_path(str(name_or_path))
 
 
 class TrainedModel:
     def __init__(self, path: str | Path):
-        self.path = Path(path)
+        self.path = model_path(path)
         self.meta = json.loads((self.path / META_FILE).read_text(encoding="utf-8"))
         self.config = PlantConfig.model_validate(self.meta["plant"])
         self.horizon = self.meta["horizon"]

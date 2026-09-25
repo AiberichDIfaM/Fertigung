@@ -315,7 +315,7 @@
           <td x-text="fmt(m.evaluation?.orders_on_time)"></td><td x-text="fmt(m.evaluation?.profit)"></td>
           <td class="actions">
             <button @click="simulateModel(m)">Simulate</button>
-            <a class="button" :href="`/models/${m.id}/download`">Download</a>
+            <button @click="downloadModel(m)">Download</button>
             <button class="danger" @click="deleteModel(m)">Delete</button>
           </td>
         </tr>

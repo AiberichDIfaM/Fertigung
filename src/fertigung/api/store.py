@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS models (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, plant_name TEXT NOT NULL, job_id TEXT, path TEXT NOT NULL,
     horizon INTEGER NOT NULL, evaluation TEXT, created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS simulations (
     id TEXT PRIMARY KEY, request TEXT NOT NULL, result TEXT NOT NULL, created_at TEXT NOT NULL
 );
@@ -94,3 +95,12 @@ class Store:
     def delete(self, table: str, id: str) -> bool:
         with self._connect() as db:
             return db.execute(f"DELETE FROM {table} WHERE id = ?", [id]).rowcount > 0
+
+    def get_setting(self, key: str) -> str | None:
+        with self._connect() as db:
+            row = db.execute("SELECT value FROM settings WHERE key = ?", [key]).fetchone()
+        return row["value"] if row else None
+
+    def set_setting(self, key: str, value: str):
+        with self._connect() as db:
+            db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", [key, value])

@@ -4,6 +4,8 @@ services:
     image: ghcr.io/aiberichdafm/fertigung:latest
     ports:
       - "8000:8000"
+    environment:
+      FERTIGUNG_API_KEY: ${FERTIGUNG_API_KEY:-}
     volumes:
       - fertigung-data:/data
     restart: unless-stopped

@@ -2,6 +2,7 @@ import csv
 import io
 import math
 import os
+import secrets
 import shutil
 import zipfile
 from contextlib import asynccontextmanager
@@ -10,8 +11,9 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response, Security
 from fastapi.responses import RedirectResponse
+from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -23,7 +25,7 @@ from fertigung.core.validation import material_costs, validate
 from fertigung.evaluation import compare, run_episode
 from fertigung.heuristics import POLICIES, make_policy
 from fertigung.rl.env import default_horizon
-from fertigung.rl.model import META_FILE, MODEL_FILE, TrainedModel
+from fertigung.rl.model import META_FILE, MODEL_FILE, TrainedModel, bundled_model_path
 from fertigung.rl.train import TrainingConfig
 
 UI_DIR = Path(__file__).parent.parent / "ui"
@@ -104,13 +106,43 @@ def training_curve(path: Path) -> list[dict]:
     return points
 
 
-def create_app(data_dir: str | Path | None = None, start_worker: bool = True) -> FastAPI:
-    data = Path(data_dir or os.environ.get("FERTIGUNG_DATA_DIR", "data")).resolve()
-    store = Store(db_path(data))
-    worker = TrainingWorker(store, data)
+def seed(store: Store, data: Path):
+    """Add the reference plant and the bundled reference model once per data directory."""
+    if store.get_setting("seeded"):
+        return
     if not store.list("plants"):
         ref = reference_config()
         store.insert("plants", name=ref.name, config=ref.model_dump(), updated_at=now())
+    bundled = bundled_model_path()
+    if not store.list("models") and (bundled / MODEL_FILE).exists():
+        target = data / "models" / "reference"
+        shutil.copytree(bundled, target, dirs_exist_ok=True)
+        trained = TrainedModel(target)
+        store.insert(
+            "models",
+            name="reference (bundled)",
+            plant_name=trained.config.name,
+            job_id=None,
+            path=str(target.relative_to(data)),
+            horizon=trained.horizon,
+            evaluation=trained.meta.get("evaluation"),
+        )
+    store.set_setting("seeded", now())
+
+
+def create_app(
+    data_dir: str | Path | None = None, start_worker: bool = True, api_key: str | None = None
+) -> FastAPI:
+    """`api_key` (default: $FERTIGUNG_API_KEY) protects every endpoint except /health, the UI and the docs."""
+    data = Path(data_dir or os.environ.get("FERTIGUNG_DATA_DIR", "data")).resolve()
+    api_key = api_key if api_key is not None else os.environ.get("FERTIGUNG_API_KEY", "")
+    store = Store(db_path(data))
+    worker = TrainingWorker(store, data)
+    seed(store, data)
+
+    def require_key(key: str | None = Security(APIKeyHeader(name="X-API-Key", auto_error=False))):
+        if api_key and not (key and secrets.compare_digest(key.encode(), api_key.encode())):
+            raise HTTPException(401, "invalid or missing API key")
 
     @asynccontextmanager
     async def lifespan(app):
@@ -165,43 +197,45 @@ def create_app(data_dir: str | Path | None = None, start_worker: bool = True) ->
     def health():
         return {"status": "ok"}
 
-    @app.get("/policies")
+    api = APIRouter(dependencies=[Depends(require_key)])
+
+    @api.get("/policies")
     def policies():
         return sorted(POLICIES) + ["model"]
 
-    @app.get("/plants")
+    @api.get("/plants")
     def list_plants():
         return store.list("plants")
 
-    @app.post("/plants", status_code=201)
+    @api.post("/plants", status_code=201)
     def create_plant(config: PlantConfig):
         return store.insert("plants", name=config.name, config=config.model_dump(), updated_at=now())
 
-    @app.post("/plants/validate")
+    @api.post("/plants/validate")
     def validate_config(config: PlantConfig):
         return analyze(config)
 
-    @app.get("/plants/{plant_id}")
+    @api.get("/plants/{plant_id}")
     def get_plant(plant_id: str):
         return get_or_404("plants", plant_id)
 
-    @app.put("/plants/{plant_id}")
+    @api.put("/plants/{plant_id}")
     def update_plant(plant_id: str, config: PlantConfig):
         get_or_404("plants", plant_id)
         return store.update(
             "plants", plant_id, name=config.name, config=config.model_dump(), updated_at=now()
         )
 
-    @app.delete("/plants/{plant_id}", status_code=204)
+    @api.delete("/plants/{plant_id}", status_code=204)
     def delete_plant(plant_id: str):
         if not store.delete("plants", plant_id):
             raise HTTPException(404, f"plant {plant_id} not found")
 
-    @app.post("/plants/{plant_id}/validate")
+    @api.post("/plants/{plant_id}/validate")
     def validate_plant(plant_id: str):
         return analyze(PlantConfig.model_validate(get_or_404("plants", plant_id)["config"]))
 
-    @app.post("/training-jobs", status_code=201)
+    @api.post("/training-jobs", status_code=201)
     def create_job(body: TrainingJobCreate):
         plant = get_or_404("plants", body.plant_id)
         if any(i["level"] == "error" for i in analyze(PlantConfig.model_validate(plant["config"]))["issues"]):
@@ -215,16 +249,16 @@ def create_app(data_dir: str | Path | None = None, start_worker: bool = True) ->
             training=body.training.model_dump(),
         )
 
-    @app.get("/training-jobs")
+    @api.get("/training-jobs")
     def list_jobs():
         return store.list("jobs")
 
-    @app.get("/training-jobs/{job_id}")
+    @api.get("/training-jobs/{job_id}")
     def get_job(job_id: str):
         job = get_or_404("jobs", job_id)
         return job | {"curve": training_curve(model_dir(data, job_id))}
 
-    @app.delete("/training-jobs/{job_id}")
+    @api.delete("/training-jobs/{job_id}")
     def cancel_job(job_id: str):
         job = get_or_404("jobs", job_id)
         if job["status"] == "queued":
@@ -233,15 +267,15 @@ def create_app(data_dir: str | Path | None = None, start_worker: bool = True) ->
             return store.update("jobs", job_id, status="cancelling")
         raise HTTPException(409, f"job is {job['status']}")
 
-    @app.get("/models")
+    @api.get("/models")
     def list_models():
         return store.list("models")
 
-    @app.get("/models/{model_id}")
+    @api.get("/models/{model_id}")
     def get_model(model_id: str):
         return get_or_404("models", model_id)
 
-    @app.get("/models/{model_id}/download")
+    @api.get("/models/{model_id}/download")
     def download_model(model_id: str):
         model = get_or_404("models", model_id)
         buffer = io.BytesIO()
@@ -252,14 +286,14 @@ def create_app(data_dir: str | Path | None = None, start_worker: bool = True) ->
         headers = {"Content-Disposition": f'attachment; filename="{model["name"].replace(" ", "_")}.zip"'}
         return Response(buffer.getvalue(), media_type="application/zip", headers=headers)
 
-    @app.delete("/models/{model_id}", status_code=204)
+    @api.delete("/models/{model_id}", status_code=204)
     def delete_model(model_id: str):
         model = get_or_404("models", model_id)
         store.delete("models", model_id)
         load_model.cache_clear()
         shutil.rmtree(data / model["path"], ignore_errors=True)
 
-    @app.post("/simulations", status_code=201)
+    @api.post("/simulations", status_code=201)
     def create_simulation(body: SimulationCreate):
         config, trained, ticks = resolve(body)
         if body.policy == "model":
@@ -280,14 +314,15 @@ def create_app(data_dir: str | Path | None = None, start_worker: bool = True) ->
         request = body.model_dump(exclude={"config"}) | {"plant": config.name, "ticks": ticks}
         return store.insert("simulations", request=request, result=result)
 
-    @app.get("/simulations/{simulation_id}")
+    @api.get("/simulations/{simulation_id}")
     def get_simulation(simulation_id: str):
         return get_or_404("simulations", simulation_id)
 
-    @app.post("/evaluations")
+    @api.post("/evaluations")
     def create_evaluation(body: EvaluationCreate):
         config, trained, ticks = resolve(body)
         extra = {"model": lambda seed: model_policy(trained, config)} if trained else None
         return {"plant": config.name, "ticks": ticks, "results": compare(config, ticks, extra, body.episodes)}
 
+    app.include_router(api)
     return app

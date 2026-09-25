@@ -16,3 +16,6 @@ build/
 tensorboard/
 /data/
 /models/
+
+# bundled reference model ships with the package
+!/src/fertigung/models/*/model.zip

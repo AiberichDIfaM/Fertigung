@@ -2,12 +2,45 @@
 const charts = {};
 let graph = null;
 
+const KEY_STORAGE = "fertigung-api-key";
+
+function storedKey() {
+  try {
+    return localStorage.getItem(KEY_STORAGE) || "";
+  } catch {
+    return "";
+  }
+}
+
+function storeKey(key) {
+  try {
+    localStorage.setItem(KEY_STORAGE, key);
+  } catch {
+    // Without storage the key is asked for again on the next load.
+  }
+  sessionKey = key;
+}
+
+let sessionKey = storedKey();
+
+async function request(method, path, body, retry = true) {
+  const sentKey = sessionKey;
+  const headers = sentKey ? { "X-API-Key": sentKey } : {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  if (res.status === 401 && retry) {
+    // Parallel requests fail together; only the first one asks, the others retry with the new key.
+    const key = sessionKey !== sentKey ? sessionKey : prompt("This server requires an API key:");
+    if (key) {
+      storeKey(key.trim());
+      return request(method, path, body, false);
+    }
+  }
+  return res;
+}
+
 async function api(method, path, body) {
-  const res = await fetch(path, {
-    method,
-    headers: body === undefined ? {} : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const res = await request(method, path, body);
   if (res.status === 204) return null;
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new Error(errorMessage(data) || res.statusText);
@@ -42,9 +75,9 @@ function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-function download(filename, text) {
+function download(filename, blob) {
   const link = document.createElement("a");
-  link.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+  link.href = URL.createObjectURL(blob);
   link.download = filename;
   link.click();
   URL.revokeObjectURL(link.href);
@@ -195,7 +228,7 @@ document.addEventListener("alpine:init", () => {
     },
 
     exportPlant() {
-      download(`${this.config.name || "plant"}.json`, JSON.stringify(this.config, null, 2));
+      download(`${this.config.name || "plant"}.json`, new Blob([JSON.stringify(this.config, null, 2)], { type: "application/json" }));
     },
 
     async importPlant(event) {
@@ -411,6 +444,12 @@ document.addEventListener("alpine:init", () => {
     async loadModels() {
       this.models = await api("GET", "/models");
       if (!this.sim.model_id && this.models.length) this.sim.model_id = this.models[0].id;
+    },
+
+    async downloadModel(model) {
+      const res = await request("GET", `/models/${model.id}/download`);
+      if (!res.ok) return this.notify(`Download failed: ${res.statusText}`);
+      download(`${model.name.replaceAll(" ", "_")}.zip`, await res.blob());
     },
 
     simulateModel(model) {

@@ -18,6 +18,13 @@ def test_plants_simulations_evaluations(tmp_path):
     assert any("tr10" in i["message"] for i in analysis["issues"])
     assert client.post("/plants", json={**config, "machines": []}).status_code == 422
 
+    [model] = client.get("/models").json()
+    assert model["name"] == "reference (bundled)"
+    model_sim = client.post(
+        "/simulations", json={"plant_id": plant["id"], "policy": "model", "model_id": model["id"]}
+    )
+    assert model_sim.status_code == 201
+
     sim = client.post("/simulations", json={"plant_id": plant["id"]}).json()
     assert sim["result"]["kpis"]["orders_on_time"] == 4
     assert all(bar["end"] is None or bar["end"] > bar["start"] for bar in sim["result"]["gantt"])
@@ -44,3 +51,12 @@ def test_training_job(tmp_path):
         assert sim.status_code == 201
         download = client.get(f"/models/{job['model_id']}/download")
         assert download.headers["content-type"] == "application/zip"
+
+
+def test_api_key(tmp_path):
+    client = TestClient(create_app(tmp_path, start_worker=False, api_key="s3cret"))
+    assert client.get("/health").status_code == 200
+    assert client.get("/ui/").status_code == 200
+    assert client.get("/plants").status_code == 401
+    assert client.get("/plants", headers={"X-API-Key": "wrong"}).status_code == 401
+    assert client.get("/plants", headers={"X-API-Key": "s3cret"}).status_code == 200

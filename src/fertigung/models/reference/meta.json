@@ -1,0 +1,424 @@
+{
+  "plant": {
+    "name": "reference",
+    "buffer_capacity": 10,
+    "part_types": [
+      {
+        "name": "a1",
+        "cost": 10.0,
+        "price": 0.0
+      },
+      {
+        "name": "a2",
+        "cost": 10.0,
+        "price": 0.0
+      },
+      {
+        "name": "a3",
+        "cost": 0.0,
+        "price": 0.0
+      },
+      {
+        "name": "a4",
+        "cost": 10.0,
+        "price": 0.0
+      },
+      {
+        "name": "a5",
+        "cost": 10.0,
+        "price": 0.0
+      },
+      {
+        "name": "a6",
+        "cost": 10.0,
+        "price": 0.0
+      },
+      {
+        "name": "a7",
+        "cost": 0.0,
+        "price": 0.0
+      },
+      {
+        "name": "a8",
+        "cost": 10.0,
+        "price": 0.0
+      },
+      {
+        "name": "a9",
+        "cost": 0.0,
+        "price": 0.0
+      },
+      {
+        "name": "a0",
+        "cost": 10.0,
+        "price": 0.0
+      },
+      {
+        "name": "b1",
+        "cost": 0.0,
+        "price": 0.0
+      },
+      {
+        "name": "b2",
+        "cost": 0.0,
+        "price": 0.0
+      },
+      {
+        "name": "b3",
+        "cost": 0.0,
+        "price": 0.0
+      },
+      {
+        "name": "b4",
+        "cost": 0.0,
+        "price": 0.0
+      },
+      {
+        "name": "b5",
+        "cost": 0.0,
+        "price": 0.0
+      },
+      {
+        "name": "b6",
+        "cost": 0.0,
+        "price": 0.0
+      },
+      {
+        "name": "b7",
+        "cost": 0.0,
+        "price": 0.0
+      },
+      {
+        "name": "b8",
+        "cost": 0.0,
+        "price": 0.0
+      },
+      {
+        "name": "b9",
+        "cost": 0.0,
+        "price": 0.0
+      },
+      {
+        "name": "b0",
+        "cost": 0.0,
+        "price": 0.0
+      },
+      {
+        "name": "fp1",
+        "cost": 0.0,
+        "price": 250.0
+      },
+      {
+        "name": "fp2",
+        "cost": 0.0,
+        "price": 400.0
+      }
+    ],
+    "transformations": [
+      {
+        "name": "tr1",
+        "inputs": [
+          "a1",
+          "a2"
+        ],
+        "output": "a3",
+        "duration": 3
+      },
+      {
+        "name": "tr2",
+        "inputs": [
+          "a4",
+          "a5",
+          "a6"
+        ],
+        "output": "a7",
+        "duration": 6
+      },
+      {
+        "name": "tr3",
+        "inputs": [
+          "a8"
+        ],
+        "output": "a9",
+        "duration": 2
+      },
+      {
+        "name": "tr4",
+        "inputs": [
+          "a8",
+          "a0"
+        ],
+        "output": "b1",
+        "duration": 2
+      },
+      {
+        "name": "tr5",
+        "inputs": [
+          "a3",
+          "a0"
+        ],
+        "output": "b2",
+        "duration": 3
+      },
+      {
+        "name": "tr6",
+        "inputs": [
+          "b2",
+          "a9"
+        ],
+        "output": "b3",
+        "duration": 5
+      },
+      {
+        "name": "tr7",
+        "inputs": [
+          "b2",
+          "a5"
+        ],
+        "output": "b4",
+        "duration": 5
+      },
+      {
+        "name": "tr8",
+        "inputs": [
+          "a2",
+          "a9"
+        ],
+        "output": "b5",
+        "duration": 5
+      },
+      {
+        "name": "tr9",
+        "inputs": [
+          "b2",
+          "a5"
+        ],
+        "output": "b6",
+        "duration": 5
+      },
+      {
+        "name": "tr10",
+        "inputs": [
+          "b3",
+          "b5",
+          "b1"
+        ],
+        "output": "b7",
+        "duration": 5
+      },
+      {
+        "name": "tr11",
+        "inputs": [
+          "b1",
+          "a5",
+          "a7"
+        ],
+        "output": "b8",
+        "duration": 5
+      },
+      {
+        "name": "tr12",
+        "inputs": [
+          "b8"
+        ],
+        "output": "b9",
+        "duration": 5
+      },
+      {
+        "name": "tr13",
+        "inputs": [
+          "b7"
+        ],
+        "output": "b0",
+        "duration": 5
+      },
+      {
+        "name": "ftran1",
+        "inputs": [
+          "b4",
+          "b5",
+          "b6",
+          "b7"
+        ],
+        "output": "fp1",
+        "duration": 10
+      },
+      {
+        "name": "ftran2",
+        "inputs": [
+          "b1",
+          "b2",
+          "b3",
+          "b9",
+          "b8",
+          "b0"
+        ],
+        "output": "fp2",
+        "duration": 15
+      }
+    ],
+    "machine_types": [
+      {
+        "name": "m1",
+        "slots": 4,
+        "transformations": [
+          "tr1",
+          "tr6",
+          "tr10"
+        ]
+      },
+      {
+        "name": "m2",
+        "slots": 3,
+        "transformations": [
+          "tr2",
+          "tr9"
+        ]
+      },
+      {
+        "name": "m3",
+        "slots": 2,
+        "transformations": [
+          "tr2",
+          "tr5",
+          "tr11"
+        ]
+      },
+      {
+        "name": "m4",
+        "slots": 6,
+        "transformations": [
+          "tr12",
+          "tr3",
+          "tr7",
+          "tr13"
+        ]
+      },
+      {
+        "name": "m5",
+        "slots": 5,
+        "transformations": [
+          "tr4",
+          "tr8",
+          "ftran1"
+        ]
+      },
+      {
+        "name": "m6",
+        "slots": 1,
+        "transformations": [
+          "tr4",
+          "ftran2"
+        ]
+      }
+    ],
+    "machines": [
+      {
+        "name": "m1",
+        "type": "m1"
+      },
+      {
+        "name": "m2",
+        "type": "m2"
+      },
+      {
+        "name": "m3",
+        "type": "m3"
+      },
+      {
+        "name": "m4",
+        "type": "m4"
+      },
+      {
+        "name": "m5",
+        "type": "m5"
+      },
+      {
+        "name": "m6",
+        "type": "m6"
+      },
+      {
+        "name": "m7",
+        "type": "m1"
+      },
+      {
+        "name": "m8",
+        "type": "m3"
+      },
+      {
+        "name": "m9",
+        "type": "m4"
+      },
+      {
+        "name": "m0",
+        "type": "m6"
+      }
+    ],
+    "orders": [
+      {
+        "product": "fp1",
+        "quantity": 2,
+        "deadline": 100,
+        "price": null
+      },
+      {
+        "product": "fp2",
+        "quantity": 3,
+        "deadline": 150,
+        "price": null
+      },
+      {
+        "product": "fp1",
+        "quantity": 3,
+        "deadline": 250,
+        "price": null
+      },
+      {
+        "product": "fp2",
+        "quantity": 3,
+        "deadline": 300,
+        "price": null
+      }
+    ],
+    "reward": {
+      "revenue": 1.0,
+      "material_cost": 1.0,
+      "holding_cost": 0.5,
+      "lateness": 5.0,
+      "idle": 0.0,
+      "shaping": 1.0,
+      "gamma": 0.99,
+      "scale": 0.01
+    }
+  },
+  "horizon": 360,
+  "training": {
+    "timesteps": 300000,
+    "seed": 0,
+    "horizon": null,
+    "n_envs": 4,
+    "learning_rate": 0.0001,
+    "n_steps": 1024,
+    "batch_size": 256,
+    "n_epochs": 10,
+    "ent_coef": 0.001,
+    "net_arch": [
+      256,
+      256
+    ],
+    "eval_freq": 20000,
+    "pretrain": "pull",
+    "pretrain_episodes": 30,
+    "pretrain_epochs": 150
+  },
+  "evaluation": {
+    "reward": -2.953999999999993,
+    "reward_unshaped": 5.740000000000023,
+    "profit": 1280.0,
+    "shipped": 19,
+    "orders_on_time": 4,
+    "total_lateness": 0,
+    "utilization": 0.12450980392156863,
+    "avg_buffer": 3.922222222222222
+  }
+}

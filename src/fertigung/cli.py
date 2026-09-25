@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import sys
 
 from fertigung.core.config import load_config, reference_config
@@ -76,6 +77,8 @@ def cmd_serve(args) -> int:
 
     from fertigung.api.app import create_app
 
+    if args.host not in ("127.0.0.1", "localhost") and not os.environ.get("FERTIGUNG_API_KEY"):
+        print("warning: serving on a public interface without FERTIGUNG_API_KEY", file=sys.stderr)
     uvicorn.run(create_app(args.data_dir), host=args.host, port=args.port)
     return 0
 
