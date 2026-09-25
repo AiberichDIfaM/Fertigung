@@ -7,7 +7,7 @@ license = "0BSD"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
-    "gymnasium>=0.29.1,<1.2",
+    "gymnasium>=0.29.1,<1.4",
     "networkx>=3.4",
     "pydantic>=2.7",
     "pyyaml>=6",
