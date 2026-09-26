@@ -23,7 +23,7 @@ def _load(args):
 
         trained = TrainedModel(args.model)
     config = load_config(args.config) if args.config else trained.config if trained else reference_config()
-    ticks = args.ticks or (trained.horizon if trained else _default_horizon(config))
+    ticks = args.ticks or (trained.horizon_for(config) if trained else _default_horizon(config))
     return config, trained, ticks
 
 
@@ -58,6 +58,9 @@ def cmd_train(args) -> int:
         n_envs=args.n_envs,
         horizon=args.ticks,
         pretrain=None if args.no_pretrain else "pull",
+        architecture="transfer" if args.transfer or args.init_model else "plant",
+        generated_plants=args.generated_plants,
+        init_model=args.init_model,
     )
     out = train(config, cfg, args.out)
     print(f"model written to {out}")
@@ -68,7 +71,40 @@ def cmd_evaluate(args) -> int:
     config, trained, ticks = _load(args)
     extra = {"model": lambda seed: trained.policy(config)} if trained else None
     print(f"{config.name}, {ticks} ticks")
-    print(format_table(compare(config, ticks, extra, args.episodes)))
+    print(format_table(compare(config, ticks, extra, args.episodes, args.policies)))
+    return 0
+
+
+def cmd_generate(args) -> int:
+    import yaml
+
+    from fertigung.generator import random_plant
+
+    print(yaml.safe_dump(random_plant(args.seed).model_dump(exclude_defaults=True), sort_keys=False))
+    return 0
+
+
+def cmd_benchmark(args) -> int:
+    from fertigung.evaluation import benchmark
+    from fertigung.generator import random_plant
+    from fertigung.heuristics import make_policy
+    from fertigung.rl.model import TrainedModel
+
+    trained = TrainedModel(args.model)
+    plants = [random_plant(s) for s in range(args.seed, args.seed + args.plants)]
+    factories = {
+        "pull": lambda config, seed: make_policy("pull"),
+        "fifo": lambda config, seed: make_policy("fifo"),
+        "model": lambda config, seed: trained.policy(config),
+    }
+    results = benchmark(plants, factories, trained.horizon_for)
+    print(f"{args.plants} generated plants, seeds {args.seed}..{args.seed + args.plants - 1}")
+    print(format_table(results))
+    for name, r in results.items():
+        if name != "pull":
+            print(
+                f"{name}: better than pull on {r['better_than_pull']}, worse on {r['worse_than_pull']} plants"
+            )
     return 0
 
 
@@ -109,6 +145,9 @@ def main(argv=None) -> int:
     p.add_argument("--ticks", type=int, help="episode length (default: 1.2 x last deadline)")
     p.add_argument("--out", help="output directory (default: models/<plant>-<timestamp>)")
     p.add_argument("--no-pretrain", action="store_true", help="skip imitation of the pull heuristic")
+    p.add_argument("--transfer", action="store_true", help="plant-independent model that works on any plant")
+    p.add_argument("--generated-plants", type=int, default=0, help="random plants to train on as well")
+    p.add_argument("--init-model", help="transfer model to fine-tune, e.g. 'general'")
     p.set_defaults(func=cmd_train)
 
     p = sub.add_parser("evaluate", help="compare heuristics and optionally a trained model")
@@ -116,7 +155,22 @@ def main(argv=None) -> int:
     p.add_argument("--model", help="trained model directory")
     p.add_argument("--ticks", type=int, help="episode length (default: model horizon or 1.2 x last deadline)")
     p.add_argument("--episodes", type=int, default=5, help="episodes for the random baseline")
+    p.add_argument(
+        "--policies", nargs="+", choices=sorted(POLICIES), help="heuristics to compare (default: all)"
+    )
     p.set_defaults(func=cmd_evaluate)
+
+    p = sub.add_parser("generate", help="print a random plant configuration as YAML")
+    p.add_argument("--seed", type=int, default=0)
+    p.set_defaults(func=cmd_generate)
+
+    p = sub.add_parser("benchmark", help="compare a transfer model with the heuristics on generated plants")
+    p.add_argument("--model", required=True, help="transfer model directory or bundled name")
+    p.add_argument("--plants", type=int, default=20)
+    p.add_argument(
+        "--seed", type=int, default=50_000, help="seed of the first plant (keep clear of training seeds)"
+    )
+    p.set_defaults(func=cmd_benchmark)
 
     p = sub.add_parser("serve", help="run the HTTP API")
     p.add_argument("--host", default="127.0.0.1")

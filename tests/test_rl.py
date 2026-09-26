@@ -2,6 +2,7 @@ from stable_baselines3.common.env_checker import check_env
 
 from fertigung.core.config import reference_config
 from fertigung.evaluation import evaluate
+from fertigung.generator import random_plant
 from fertigung.rl.env import JobShopEnv
 from fertigung.rl.model import TrainedModel
 from fertigung.rl.train import TrainingConfig, train
@@ -25,3 +26,22 @@ def test_train_save_load_evaluate(tmp_path):
     trained = TrainedModel(train(config, cfg, tmp_path))
     expected = evaluate(config, lambda seed: trained.policy(), trained.horizon)
     assert trained.meta["evaluation"] == expected
+
+
+def test_transfer_model_runs_on_unseen_plant(tmp_path):
+    cfg = TrainingConfig(
+        architecture="transfer",
+        generated_plants=2,
+        eval_plants=1,
+        timesteps=256,
+        n_envs=1,
+        n_steps=128,
+        batch_size=64,
+        eval_freq=128,
+        pretrain_episodes=2,
+        pretrain_epochs=2,
+    )
+    trained = TrainedModel(train(reference_config(), cfg, tmp_path))
+    unseen = random_plant(99)
+    result = evaluate(unseen, lambda seed: trained.policy(unseen), trained.horizon_for(unseen))
+    assert result["reward"] is not None

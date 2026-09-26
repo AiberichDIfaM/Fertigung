@@ -29,11 +29,15 @@ from fertigung.rl.model import META_FILE, MODEL_FILE, TrainedModel, bundled_mode
 from fertigung.rl.train import TrainingConfig
 
 UI_DIR = Path(__file__).parent.parent / "ui"
+BUNDLED_MODELS = ("reference", "general")
 
 
 class TrainingJobCreate(BaseModel):
     plant_id: str
     training: TrainingConfig = TrainingConfig()
+    init_model_id: str | None = Field(
+        None, description="Transfer model to fine-tune (sets architecture=transfer)"
+    )
 
 
 class PlantSource(BaseModel):
@@ -44,12 +48,15 @@ class PlantSource(BaseModel):
 
 
 class SimulationCreate(PlantSource):
-    policy: Literal["pull", "fifo", "random", "model"] = "pull"
+    policy: Literal["pull", "lookahead", "fifo", "random", "model"] = "pull"
     seed: int = 0
 
 
 class EvaluationCreate(PlantSource):
     episodes: int = Field(5, ge=1, le=50, description="Episodes for the random baseline")
+    policies: list[Literal["pull", "lookahead", "fifo", "random"]] = Field(
+        ["pull", "lookahead", "fifo", "random"], description="Heuristics to compare (lookahead is slow)"
+    )
 
 
 def analyze(config: PlantConfig) -> dict:
@@ -113,20 +120,24 @@ def seed(store: Store, data: Path):
     if not store.list("plants"):
         ref = reference_config()
         store.insert("plants", name=ref.name, config=ref.model_dump(), updated_at=now())
-    bundled = bundled_model_path()
-    if not store.list("models") and (bundled / MODEL_FILE).exists():
-        target = data / "models" / "reference"
-        shutil.copytree(bundled, target, dirs_exist_ok=True)
-        trained = TrainedModel(target)
-        store.insert(
-            "models",
-            name="reference (bundled)",
-            plant_name=trained.config.name,
-            job_id=None,
-            path=str(target.relative_to(data)),
-            horizon=trained.horizon,
-            evaluation=trained.meta.get("evaluation"),
-        )
+    if not store.list("models"):
+        for name in BUNDLED_MODELS:
+            bundled = bundled_model_path(name)
+            if not (bundled / MODEL_FILE).exists():
+                continue
+            target = data / "models" / name
+            shutil.copytree(bundled, target, dirs_exist_ok=True)
+            trained = TrainedModel(target)
+            store.insert(
+                "models",
+                name=f"{name} (bundled)",
+                plant_name=trained.config.name,
+                job_id=None,
+                path=str(target.relative_to(data)),
+                horizon=trained.horizon,
+                evaluation=trained.meta.get("evaluation"),
+                architecture=trained.architecture,
+            )
     store.set_setting("seeded", now())
 
 
@@ -178,7 +189,7 @@ def create_app(
             config = trained.config
         else:
             raise HTTPException(422, "pass plant_id, config or model_id")
-        ticks = source.ticks or (trained.horizon if trained else default_horizon(config))
+        ticks = source.ticks or (trained.horizon_for(config) if trained else default_horizon(config))
         return config, trained, ticks
 
     def model_policy(trained: TrainedModel, config: PlantConfig):
@@ -240,13 +251,21 @@ def create_app(
         plant = get_or_404("plants", body.plant_id)
         if any(i["level"] == "error" for i in analyze(PlantConfig.model_validate(plant["config"]))["issues"]):
             raise HTTPException(422, "plant has validation errors")
+        training = body.training
+        if body.init_model_id:
+            base = get_or_404("models", body.init_model_id)
+            if base["architecture"] != "transfer":
+                raise HTTPException(422, "only transfer models can be fine-tuned on other plants")
+            training = training.model_copy(
+                update={"architecture": "transfer", "init_model": str(data / base["path"])}
+            )
         return store.insert(
             "jobs",
             plant_id=plant["id"],
             plant_name=plant["name"],
             plant=plant["config"],
             status="queued",
-            training=body.training.model_dump(),
+            training=training.model_dump(),
         )
 
     @api.get("/training-jobs")
@@ -322,7 +341,11 @@ def create_app(
     def create_evaluation(body: EvaluationCreate):
         config, trained, ticks = resolve(body)
         extra = {"model": lambda seed: model_policy(trained, config)} if trained else None
-        return {"plant": config.name, "ticks": ticks, "results": compare(config, ticks, extra, body.episodes)}
+        return {
+            "plant": config.name,
+            "ticks": ticks,
+            "results": compare(config, ticks, extra, body.episodes, body.policies),
+        }
 
     app.include_router(api)
     return app

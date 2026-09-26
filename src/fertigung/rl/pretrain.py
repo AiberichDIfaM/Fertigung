@@ -2,17 +2,16 @@ import numpy as np
 import torch
 from sb3_contrib import MaskablePPO
 
-from fertigung.core.config import PlantConfig
 from fertigung.heuristics import make_policy
 from fertigung.rl.env import JobShopEnv
 
 
 def expert_rollouts(
-    config: PlantConfig, horizon: int, expert: str, episodes: int, gamma: float, seed: int = 0
+    env: JobShopEnv, expert: str, episodes: int, gamma: float, seed: int = 0
 ) -> dict[str, np.ndarray]:
     """Label every visited state with the expert's action; actions are randomized with rising epsilon
     across episodes so the data also covers states off the expert's path."""
-    env = JobShopEnv(config, horizon)
+    env.reset(seed=seed)
     rng = np.random.default_rng(seed)
     policy = make_policy(expert, seed)
     obs_l, act_l, mask_l, ret_l = [], [], [], []
@@ -23,7 +22,7 @@ def expert_rollouts(
         while True:
             mask = env.action_masks()
             choice = policy(env.sim)
-            label = 0 if choice is None else env.observer.pairs.index(choice) + 1
+            label = env.observer.action_for(choice, env.sim)
             obs_l.append(obs)
             act_l.append(label)
             mask_l.append(mask)

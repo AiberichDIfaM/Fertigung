@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS jobs (
 );
 CREATE TABLE IF NOT EXISTS models (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, plant_name TEXT NOT NULL, job_id TEXT, path TEXT NOT NULL,
-    horizon INTEGER NOT NULL, evaluation TEXT, created_at TEXT NOT NULL
+    horizon INTEGER NOT NULL, evaluation TEXT, created_at TEXT NOT NULL,
+    architecture TEXT NOT NULL DEFAULT 'plant'
 );
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS simulations (
@@ -44,6 +45,9 @@ class Store:
         with self._connect() as db:
             db.execute("PRAGMA journal_mode=WAL")
             db.executescript(SCHEMA)
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(models)")}
+            if "architecture" not in columns:
+                db.execute("ALTER TABLE models ADD COLUMN architecture TEXT NOT NULL DEFAULT 'plant'")
 
     @contextmanager
     def _connect(self):

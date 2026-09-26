@@ -58,6 +58,7 @@ def run_training(job_id: str, data_dir: str):
             path=str(out.relative_to(data)),
             horizon=trained.horizon,
             evaluation=trained.meta["evaluation"],
+            architecture=trained.architecture,
         )
         store.update(
             "jobs",
