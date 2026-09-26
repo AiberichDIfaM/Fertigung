@@ -107,7 +107,8 @@ document.addEventListener("alpine:init", () => {
     selectedJobId: null,
     selectedJob: null,
     training: {},
-    trainingFields: ["timesteps", "seed", "n_envs", "horizon", "learning_rate", "ent_coef", "pretrain", "pretrain_episodes", "pretrain_epochs"],
+    trainingFields: ["architecture", "generated_plants", "timesteps", "seed", "n_envs", "horizon", "learning_rate", "ent_coef", "pretrain", "pretrain_episodes", "pretrain_epochs"],
+    initModelId: "",
     models: [],
     sim: { policy: "pull", model_id: "", ticks: null, seed: 0 },
     simResult: null,
@@ -129,6 +130,7 @@ document.addEventListener("alpine:init", () => {
         this.notify(e);
       }
       this.$watch("config", debounce(() => this.validate(), 400));
+      this.$watch("initModelId", (id) => id && (this.training.architecture = "transfer"));
       setInterval(() => this.pollJobs(), 3000);
     },
 
@@ -295,7 +297,9 @@ document.addEventListener("alpine:init", () => {
       const training = { ...this.training, pretrain: this.training.pretrain || null };
       for (const key of Object.keys(training)) if (training[key] === "") training[key] = null;
       try {
-        const job = await api("POST", "/training-jobs", { plant_id: this.plantId, training });
+        const body = { plant_id: this.plantId, training };
+        if (this.initModelId) body.init_model_id = this.initModelId;
+        const job = await api("POST", "/training-jobs", body);
         await this.loadJobs();
         this.selectJob(job.id);
       } catch (e) {

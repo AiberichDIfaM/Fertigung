@@ -2,9 +2,11 @@ import pytest
 
 from fertigung.core.config import load_config, reference_config
 from fertigung.core.plant import Plant
+from fertigung.core.reward import Reward
 from fertigung.core.simulation import Simulation
 from fertigung.core.validation import validate
-from fertigung.heuristics import pull
+from fertigung.generator import random_plant
+from fertigung.heuristics import Lookahead, pull
 
 TINY = {
     "name": "tiny",
@@ -59,3 +61,14 @@ def test_pull_meets_reference_orders():
     kpis = sim.kpis()
     assert kpis["orders_on_time"] == len(sim.orders)
     assert kpis["revenue"] == sum(e.amount for e in sim.events if e.kind == "ship")
+
+
+def test_lookahead_is_never_worse_than_pull():
+    config = random_plant(50019)
+    results = {}
+    for name, policy in [("pull", pull), ("lookahead", Lookahead())]:
+        sim = Simulation(Plant(config))
+        reward = Reward(sim, config.reward.model_copy(update={"shaping": 0.0}))
+        sim.run(policy, 200, reward)
+        results[name] = reward.total
+    assert results["lookahead"] >= results["pull"]

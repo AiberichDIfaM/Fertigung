@@ -18,8 +18,9 @@ def test_plants_simulations_evaluations(tmp_path):
     assert any("tr10" in i["message"] for i in analysis["issues"])
     assert client.post("/plants", json={**config, "machines": []}).status_code == 422
 
-    [model] = client.get("/models").json()
-    assert model["name"] == "reference (bundled)"
+    models = {m["name"]: m for m in client.get("/models").json()}
+    assert models["general (bundled)"]["architecture"] == "transfer"
+    model = models["reference (bundled)"]
     model_sim = client.post(
         "/simulations", json={"plant_id": plant["id"], "policy": "model", "model_id": model["id"]}
     )
@@ -30,7 +31,8 @@ def test_plants_simulations_evaluations(tmp_path):
     assert all(bar["end"] is None or bar["end"] > bar["start"] for bar in sim["result"]["gantt"])
     assert client.get(f"/simulations/{sim['id']}").json() == sim
 
-    evaluation = client.post("/evaluations", json={"plant_id": plant["id"], "episodes": 1}).json()
+    body = {"plant_id": plant["id"], "episodes": 1, "policies": ["pull", "fifo", "random"]}
+    evaluation = client.post("/evaluations", json=body).json()
     assert set(evaluation["results"]) == {"pull", "fifo", "random"}
 
 

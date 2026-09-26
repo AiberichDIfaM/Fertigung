@@ -186,13 +186,24 @@
             <template x-if="key === 'pretrain'">
               <select x-model="training.pretrain"><option value="pull">pull</option><option value="fifo">fifo</option><option value="">none</option></select>
             </template>
-            <template x-if="key !== 'pretrain'">
+            <template x-if="key === 'architecture'">
+              <select x-model="training.architecture" :disabled="!!initModelId"><option value="plant">plant-specific</option><option value="transfer">transferable</option></select>
+            </template>
+            <template x-if="!['pretrain', 'architecture'].includes(key)">
               <input type="number" step="any" :placeholder="key === 'horizon' ? 'auto' : ''" x-model.number="training[key]">
             </template>
             <small x-text="schemaProps('TrainingConfig')[key]?.description || ''"></small>
           </label>
         </template>
       </div>
+      <label class="field">
+        <span>fine-tune from</span>
+        <select x-model="initModelId">
+          <option value="">(train from scratch)</option>
+          <template x-for="m in models.filter((m) => m.architecture === 'transfer')" :key="m.id"><option :value="m.id" x-text="m.name"></option></template>
+        </select>
+        <small>Start from a transferable model instead of imitating a heuristic.</small>
+      </label>
       <button class="primary" @click="startTraining()" :disabled="dirty || !plantId">Start training</button>
 
       <h3>Jobs</h3>
@@ -224,12 +235,12 @@
     <div class="toolbar">
       <label>Policy
         <select x-model="sim.policy">
-          <option>pull</option><option>fifo</option><option>random</option><option value="model">trained model</option>
+          <option>pull</option><option value="lookahead">lookahead (slow)</option><option>fifo</option><option>random</option><option value="model">trained model</option>
         </select>
       </label>
       <label x-show="sim.policy === 'model'">Model
         <select x-model="sim.model_id">
-          <template x-for="m in models" :key="m.id"><option :value="m.id" x-text="m.name"></option></template>
+          <template x-for="m in models" :key="m.id"><option :value="m.id" x-text="`${m.name} (${m.architecture === 'transfer' ? 'any plant' : m.plant_name})`"></option></template>
         </select>
       </label>
       <label>Ticks <input type="number" min="1" placeholder="auto" x-model.number="sim.ticks"></label>
@@ -306,15 +317,17 @@
   <!-- Models -->
   <section x-show="tab === 'models'">
     <table class="numbers">
-      <thead><tr><th>Name</th><th>Plant</th><th>Horizon</th><th>Reward</th><th>Shipped</th><th>On time</th><th>Profit</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Type</th><th>Trained on</th><th>Horizon</th><th>Reward</th><th>Shipped</th><th>On time</th><th>Profit</th><th></th></tr></thead>
       <tbody>
       <template x-for="m in models" :key="m.id">
         <tr>
-          <td x-text="m.name"></td><td x-text="m.plant_name"></td><td x-text="m.horizon"></td>
+          <td x-text="m.name"></td><td x-text="m.architecture === 'transfer' ? 'transferable' : 'plant-specific'"></td>
+          <td x-text="m.plant_name"></td><td x-text="m.horizon"></td>
           <td x-text="fmt(m.evaluation?.reward)"></td><td x-text="fmt(m.evaluation?.shipped)"></td>
           <td x-text="fmt(m.evaluation?.orders_on_time)"></td><td x-text="fmt(m.evaluation?.profit)"></td>
           <td class="actions">
             <button @click="simulateModel(m)">Simulate</button>
+            <button x-show="m.architecture === 'transfer'" @click="initModelId = m.id; location.hash = 'training'">Fine-tune</button>
             <button @click="downloadModel(m)">Download</button>
             <button class="danger" @click="deleteModel(m)">Delete</button>
           </td>

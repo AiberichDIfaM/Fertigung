@@ -17,7 +17,8 @@ docker run -p 8000:8000 -v fertigung-data:/data ghcr.io/aiberichdafm/fertigung:l
 # or, from a checkout: docker compose up -d
 ```
 
-Open http://localhost:8000. The reference plant and a model pretrained on it are available right away.
+Open http://localhost:8000. The reference plant, a model trained on it and a transferable model are available
+right away.
 
 Locally, with [uv](https://docs.astral.sh/uv/):
 
@@ -143,14 +144,37 @@ random exploration fills the buffer with parts that cannot be combined long befo
 `meta.json` (plant, horizon, training settings, final evaluation), `progress.csv` and checkpoints.
 A model only fits plants with the same machines, transformations and final products.
 
-Baselines in `fertigung.heuristics`: `pull` (explodes the bill of materials of the next due product and
-produces only net requirements), `fifo` (oldest buffered part first) and `random`.
+### Heuristics
+
+`fertigung.heuristics` provides:
+
+- `pull`: picks the next product (open orders by deadline, else the best margin), explodes its bill of
+  materials against what is already in the buffer or in progress and only starts the net requirements, closest
+  to the final product first. It never overfills the buffer, because intermediate outputs are reserved in advance.
+- `lookahead`: a rollout algorithm on top of pull. At every decision it tries pull's choice, waiting and the
+  other dispatches pull would consider on copies of the simulation, lets pull finish each copy until the end
+  of the episode and takes the best by unshaped reward. The simulation is deterministic and pull's choice is
+  always a candidate, so it is never worse than pull. `units > 1` adds work-ahead candidates for later products
+  (`PullMulti`); that helped on some plants and hurt on others, so the default is 1.
+- `fifo` (oldest buffered part first) and `random` as weak baselines.
+
+Unshaped reward over the default horizon:
+
+| Policy | Reference plant | 20 unseen generated plants (mean) | vs. pull | Time per episode (reference) |
+|---|---|---|---|---|
+| `lookahead` | **9.46** | **4.27** | better on 19, worse on 0 | ~50 s |
+| reference model (PPO) | 5.74 | – | – | < 1 s |
+| `pull` | 5.04 | 0.58 | – | 0.1 s |
+
+`lookahead` is the best scheduler in the package. It trades a little on-time delivery for profit when the reward
+weights make that worthwhile (46 instead of 52 orders on time over the 20 plants), and it is slow on large
+plants. Distilling it into the candidate network (expert iteration) would make it fast.
 
 ### Reference plant and model
 
 The package ships the reference plant (15 transformations, 10 machines, two final products, four orders) and a
-model trained on it (`src/fertigung/models/reference`, usable as `--model reference`). The server copies both into
-its data directory on first start. Evaluation over the default horizon of 360 ticks:
+model trained on it (`src/fertigung/models/reference`, usable as `--model reference`). The server copies the plant
+and both bundled models (`reference` and the transfer model `general`) into its data directory on first start. Evaluation over the default horizon of 360 ticks:
 
 | Policy | Reward | Unshaped reward | Profit | Products | Orders on time | Avg. buffer |
 |---|---|---|---|---|---|---|
@@ -163,6 +187,45 @@ The model makes 13 x fp1 and 6 x fp2 where pull makes 5 x fp1 and 12 x fp2, and 
 It was trained with `fertigung train --timesteps 300000 --seed 0`; the best policy appeared after 40k PPO steps.
 PPO fine-tuning does not improve on the imitated policy reliably: with seeds 1 and 2 no evaluation beat it, so
 those runs end up with a pull-equivalent model. Training several seeds and keeping the best is worthwhile.
+
+### Transfer to other plants
+
+There are two model architectures (`architecture` in the training settings):
+
+- **plant** (default): the observation has one entry per part type and one action per (machine, transformation)
+  pair of the training plant. Such a model only works on that plant.
+- **transfer**: the model scores the currently possible dispatches instead. Each candidate is described by
+  plant-independent features (net requirement of its output from the bill of materials, distance to the final
+  product, value relative to product prices, buffer use, deadline slack of the orders it serves, whether the pull
+  heuristic would choose it, ...) plus global features. One shared network scores every candidate and a separate
+  head scores waiting, so the same weights apply to any plant with up to `max_candidates` possible dispatches.
+
+A transfer model is trained on the given plant plus `generated_plants` random plants from
+`fertigung.generator` and selected on the given plant plus `eval_plants` further random plants. It can be used
+on any plant directly or fine-tuned on a specific plant (`init_model`, or *Fine-tune* in the UI).
+
+```sh
+uv run fertigung train --transfer --generated-plants 50 --out models/general
+uv run fertigung benchmark --model models/general --plants 20       # unseen generated plants vs. pull and fifo
+uv run fertigung train my_plant.yaml --init-model models/general --timesteps 50000
+uv run fertigung generate --seed 7 > plant.yaml                     # a random plant to experiment with
+```
+
+The package also ships a transfer model, `general` (trained on the reference plant and 50 generated plants).
+Results so far, on generated plants it never saw (unshaped reward):
+
+- **Zero-shot**: `general` behaves exactly like the pull heuristic on all 20 benchmark plants
+  (`fertigung benchmark --model general`). It is a reliable pull-level policy for any plant and a starting
+  point for fine-tuning, not yet a better scheduler.
+- **PPO across many plants** did not find a policy that beats pull reliably: with 50 or 100 training plants the
+  evaluations stayed at or below the imitated policy. One earlier run was better than pull on 3 and worse on 2
+  of 20 plants; that gain did not reproduce.
+- **Fine-tuning** `general` for 50k steps on five unseen plants kept pull level and found no improvement.
+  Plant-specific training from scratch improved one of these plants (3.39 to 5.00) but failed on another
+  (-4.15 against pull's 2.90), because imitating pull with the plant-specific observation is less reliable.
+
+The transfer machinery (generator, candidate policy, fine-tuning, benchmark) works; the limiting factor is how
+little PPO improves on the pull heuristic, on one plant as well as across plants.
 
 ## Web UI
 
@@ -235,11 +298,12 @@ Dependabot keeps the uv lockfile, the GitHub Actions and the Docker base image u
 ```
 src/fertigung/
 ├── core/          # config schema, plant model, simulation, reward, validation
-├── rl/            # Gymnasium env, behavior cloning, training, model loading
+├── rl/            # Gymnasium env, candidate policy, behavior cloning, training, model loading
 ├── api/           # FastAPI app, SQLite store, training worker
 ├── ui/            # browser UI served at /
 ├── configs/       # bundled reference plant
-├── models/        # bundled reference model
+├── models/        # bundled models: reference (plant-specific), general (transfer)
+├── generator.py   # random valid plants for transfer training and benchmarks
 ├── heuristics.py  # baseline dispatch policies
 ├── evaluation.py  # KPIs per policy
 └── cli.py

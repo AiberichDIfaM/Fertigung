@@ -1,3 +1,4 @@
+import copy
 from collections import Counter
 from dataclasses import dataclass, field
 
@@ -73,7 +74,21 @@ class Simulation:
 
     def __init__(self, plant: Plant):
         self.plant = plant
+        self.record_events = True
+        self.end: int | None = None
         self.reset()
+
+    def clone(self) -> "Simulation":
+        """Independent copy of the current state without the event log, for lookahead rollouts."""
+        c = copy.copy(self)
+        c.buffer = list(self.buffer)
+        c.jobs = [[copy.copy(job) for job in jobs] for jobs in self.jobs]
+        c.orders = [copy.copy(o) for o in self.orders]
+        c.ledger = copy.copy(self.ledger)
+        c.ledger.shipped = Counter(self.ledger.shipped)
+        c.events = []
+        c.record_events = False
+        return c
 
     def reset(self):
         self.time = 0
@@ -92,6 +107,7 @@ class Simulation:
         self.events: list[Event] = []
         self._next_id = 0
         self._next_job = 0
+        self._cache = (None, None)
 
     def buffer_counts(self) -> Counter:
         return Counter(p.type for p in self.buffer)
@@ -108,13 +124,18 @@ class Simulation:
         )
 
     def valid_dispatches(self) -> list[tuple[int, int]]:
-        counts = self.buffer_counts()
-        return [
-            (m, t)
-            for m, machine in enumerate(self.plant.machines)
-            for t in machine.transformations
-            if self.can_dispatch(m, t, counts)
-        ]
+        # Cached per state: policies, masks and observations ask repeatedly between two state changes.
+        state = (self.time, self._next_job, len(self.buffer), sum(len(jobs) for jobs in self.jobs))
+        if self._cache[0] != state:
+            counts = self.buffer_counts()
+            valid = [
+                (m, t)
+                for m, machine in enumerate(self.plant.machines)
+                for t in machine.transformations
+                if self.can_dispatch(m, t, counts)
+            ]
+            self._cache = (state, valid)
+        return list(self._cache[1])
 
     def dispatch(self, m: int, t: int):
         if not self.can_dispatch(m, t):
@@ -177,6 +198,7 @@ class Simulation:
         )
 
     def run(self, policy, ticks: int, reward=None):
+        self.end = self.time + ticks
         for _ in range(ticks):
             while (choice := policy(self)) is not None:
                 self.dispatch(*choice)
@@ -222,6 +244,8 @@ class Simulation:
         return Part(self._next_id, part_type)
 
     def _log(self, kind, m, job, part=None, order=None, amount=0.0):
+        if not self.record_events:
+            return
         t = job.transformation
         self.events.append(
             Event(
