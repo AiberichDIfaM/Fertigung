@@ -168,7 +168,10 @@ Unshaped reward over the default horizon:
 
 `lookahead` is the best scheduler in the package. It trades a little on-time delivery for profit when the reward
 weights make that worthwhile (46 instead of 52 orders on time over the 20 plants), and it is slow on large
-plants. Distilling it into the candidate network (expert iteration) would make it fast.
+plants for batch simulation, although a single decision takes only about 70 ms there, fast enough to schedule
+a real plant online. Imitating it with the candidate network (`pretrain: lookahead`) did not work: the network
+learns only a quarter of lookahead's deviations from pull on unseen states, and its wrong deviations compound
+into schedules far worse than pull.
 
 ### Reference plant and model
 
