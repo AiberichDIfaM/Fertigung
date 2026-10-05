@@ -235,7 +235,7 @@
     <div class="toolbar">
       <label>Policy
         <select x-model="sim.policy">
-          <option>pull</option><option value="lookahead">lookahead (slow)</option><option>fifo</option><option>random</option><option value="model">trained model</option>
+          <option>pull</option><option value="pull_multi">pull_multi</option><option value="dbr">dbr</option><option value="lookahead">lookahead (slow)</option><option>fifo</option><option>random</option><option value="model">trained model</option>
         </select>
       </label>
       <label x-show="sim.policy === 'model'">Model

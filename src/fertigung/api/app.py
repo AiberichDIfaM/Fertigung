@@ -48,14 +48,15 @@ class PlantSource(BaseModel):
 
 
 class SimulationCreate(PlantSource):
-    policy: Literal["pull", "lookahead", "fifo", "random", "model"] = "pull"
+    policy: Literal["pull", "pull_multi", "dbr", "lookahead", "fifo", "random", "model"] = "pull"
     seed: int = 0
 
 
 class EvaluationCreate(PlantSource):
     episodes: int = Field(5, ge=1, le=50, description="Episodes for the random baseline")
-    policies: list[Literal["pull", "lookahead", "fifo", "random"]] = Field(
-        ["pull", "lookahead", "fifo", "random"], description="Heuristics to compare (lookahead is slow)"
+    policies: list[Literal["pull", "pull_multi", "dbr", "lookahead", "fifo", "random"]] = Field(
+        ["pull", "pull_multi", "lookahead", "fifo", "random"],
+        description="Heuristics to compare (lookahead is slow)",
     )
 
 

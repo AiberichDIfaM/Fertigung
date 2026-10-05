@@ -1,0 +1,106 @@
+# Small sheet metal job shop: laser cutting, bending, welding, powder coating, assembly.
+# Time in minutes from Monday 06:00; trucks collect finished orders weekdays at 15:00
+# (deadlines 540 = Mon 15:00, 1980 = Tue, 3420 = Wed, 4860 = Thu, 6300 = Fri).
+name: workshop
+start: {day: mon, time: "06:00"}
+
+layout:
+  distance: manhattan
+  stores:
+    - {name: raw-store, kind: raw, position: [0, 0]}
+    - {name: intermediate-store, kind: intermediate, position: [30, 15], capacity: 60}
+    - {name: finished-store, kind: finished, position: [60, 0]}
+
+part_types:
+  - {name: sheet-thin, cost: 8}
+  - {name: sheet-thick, cost: 12}
+  - {name: tube, cost: 6}
+  - {name: screws, cost: 1}
+  - {name: powder, cost: 3}
+  - {name: blank-thin}
+  - {name: blank-thick}
+  - {name: bent-part}
+  - {name: frame-raw}
+  - {name: housing-raw}
+  - {name: frame-coated}
+  - {name: housing-coated}
+  - {name: frame, price: 180}
+  - {name: housing, price: 160}
+  - {name: bracket, price: 35}
+
+transformations:
+  - {name: laser-thin, inputs: [sheet-thin], output: blank-thin, duration: 6, setup_family: thin}
+  - {name: laser-thick, inputs: [sheet-thick], output: blank-thick, duration: 10, setup_family: thick}
+  - {name: bend, inputs: [blank-thin], output: bent-part, duration: 5, setup_family: tool-a}
+  - {name: weld-frame, inputs: [tube, tube, tube, tube, blank-thick], output: frame-raw, duration: 25, setup_family: frame}
+  - {name: weld-housing, inputs: [bent-part, bent-part, blank-thin], output: housing-raw, duration: 30, setup_family: housing}
+  - {name: coat-frame, inputs: [frame-raw, powder], output: frame-coated, duration: 20, setup_family: ral7035}
+  - {name: coat-housing, inputs: [housing-raw, powder], output: housing-coated, duration: 20, setup_family: ral9005}
+  - {name: assemble-frame, inputs: [frame-coated, screws], output: frame, duration: 15}
+  - {name: assemble-housing, inputs: [housing-coated, bent-part, screws], output: housing, duration: 20}
+  - {name: assemble-bracket, inputs: [bent-part, screws], output: bracket, duration: 8}
+
+machine_types:
+  - name: laser
+    transformations: [laser-thin, laser-thick]
+    operators: 1
+    setup: {operators: 1, initial: 15, default: 20}
+  - name: press-brake
+    transformations: [bend]
+    operators: 1
+    setup: {operators: 1, initial: 10}
+  - name: welding-station
+    transformations: [weld-frame, weld-housing]
+    operators: 1
+    setup: {operators: 1, initial: 10, default: 15}
+  - name: coating-line
+    transformations: [coat-frame, coat-housing]
+    slots: 2
+    operators: 1
+    setup:
+      operators: 2
+      initial: 30
+      default: 45
+      times:
+        - {from: ral9005, to: ral7035, minutes: 60}   # dark to light needs a thorough clean
+  - name: assembly-station
+    transformations: [assemble-frame, assemble-housing, assemble-bracket]
+    operators: 1
+
+machines:
+  - {name: laser-1, type: laser, position: [10, 5], input_buffer: 6, output_buffer: 8}
+  - {name: laser-2, type: laser, position: [10, 20], input_buffer: 6, output_buffer: 8}
+  - {name: press-brake-1, type: press-brake, position: [20, 5], input_buffer: 8, output_buffer: 8}
+  - {name: welding-1, type: welding-station, position: [35, 5], input_buffer: 10, output_buffer: 4}
+  - {name: welding-2, type: welding-station, position: [35, 25], input_buffer: 10, output_buffer: 4}
+  - {name: coating-1, type: coating-line, position: [45, 15], input_buffer: 8, output_buffer: 6}
+  - {name: assembly-1, type: assembly-station, position: [55, 10], input_buffer: 8, output_buffer: 4}
+  - {name: assembly-2, type: assembly-station, position: [55, 20], input_buffer: 8, output_buffer: 4}
+
+transport:
+  speed: 60          # metres per minute
+  handling: 2
+  vehicles:
+    - {name: forklift, count: 1, capacity: 4}
+    - {name: hand-cart, count: 2, capacity: 2}
+
+staff:
+  shifts:
+    - {days: [mon, tue, wed, thu, fri], start: "06:00", end: "14:00", workers: 6}
+    - {days: [mon, tue, wed, thu, fri], start: "14:00", end: "22:00", workers: 3}
+
+logistics:
+  pickups:
+    - {days: [mon, tue, wed, thu, fri], time: "15:00"}
+  partial_shipments: false
+
+orders:
+  - {product: bracket, quantity: 20, deadline: 1980}
+  - {product: frame, quantity: 10, deadline: 1980}
+  - {product: housing, quantity: 6, deadline: 3420}
+  - {product: bracket, quantity: 15, deadline: 4860}
+  - {product: frame, quantity: 8, deadline: 4860, priority: 2}
+  - {product: housing, quantity: 4, deadline: 6300}
+
+objective:
+  profile: on_time

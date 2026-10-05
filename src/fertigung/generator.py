@@ -1,11 +1,12 @@
 import math
 import random
+from collections import Counter
 
 from fertigung.core.config import PlantConfig
 from fertigung.core.plant import Plant
 from fertigung.core.simulation import Simulation
 from fertigung.core.validation import material_costs, validate
-from fertigung.heuristics import pull
+from fertigung.heuristics import _producers, pull
 
 
 def _layers(rng: random.Random) -> tuple[list[list[str]], list[str]]:
@@ -17,7 +18,7 @@ def _layers(rng: random.Random) -> tuple[list[list[str]], list[str]]:
     return layers, finals
 
 
-def _draft(rng: random.Random) -> dict:
+def _draft(rng: random.Random, dense: bool = False) -> dict:
     layers, finals = _layers(rng)
     transformations = []
     for depth, layer in enumerate(layers[1:], start=1):
@@ -47,13 +48,12 @@ def _draft(rng: random.Random) -> dict:
         shared = rng.choice(machine_types)["transformations"][0] if machine_types else None
         if shared and shared not in group and rng.random() < 0.4:
             group.append(shared)
-        machine_types.append(
-            {"name": f"mt{len(machine_types)}", "slots": rng.randint(1, 5), "transformations": group}
-        )
+        slots = rng.randint(1, 2) if dense else rng.randint(1, 5)
+        machine_types.append({"name": f"mt{len(machine_types)}", "slots": slots, "transformations": group})
     machines = [
         {"name": f"{mt['name']}_{k}", "type": mt["name"]}
         for mt in machine_types
-        for k in range(rng.choice([1, 1, 2]))
+        for k in range(1 if dense else rng.choice([1, 1, 2]))
     ]
 
     used = {p for t in transformations for p in t["inputs"]}
@@ -63,7 +63,7 @@ def _draft(rng: random.Random) -> dict:
     wip_inputs = max(sum(1 for p in t["inputs"] if not p.startswith("r")) for t in transformations)
     return {
         "name": "generated",
-        "buffer_capacity": wip_inputs + rng.randint(3, 8),
+        "buffer_capacity": wip_inputs + (rng.randint(6, 12) if dense else rng.randint(3, 8)),
         "part_types": parts,
         "transformations": transformations,
         "machine_types": machine_types,
@@ -71,7 +71,68 @@ def _draft(rng: random.Random) -> dict:
     }
 
 
-def _price_and_orders(data: dict, rng: random.Random) -> dict:
+def _unit_work(plant: Plant, product: str) -> tuple[int, int]:
+    """Total processing time and critical path length of one unit of `product`."""
+    producers = _producers(plant)
+
+    def walk(part):
+        if plant.is_raw(part):
+            return 0, 0
+        t = plant.transformations[producers[part]]
+        inner = [(walk(q), n) for q, n in t.inputs.items()]
+        work = t.duration + sum(w * n for (w, _), n in inner)
+        path = t.duration + max((c for (_, c), _ in inner), default=0)
+        return work, path
+
+    return walk(product)
+
+
+def _design_dense(data: dict, plant: Plant, rng: random.Random) -> None:
+    """Orders first, then capacity: every machine type gets enough slots to be ~80% utilised over the planning
+    period, and deadlines follow the cumulative workload, so meeting them takes a busy but feasible plant."""
+    orders = [
+        {"product": rng.choice(plant.final), "quantity": rng.randint(2, 6)} for _ in range(rng.randint(4, 8))
+    ]
+    producers = _producers(plant)
+    count = Counter()
+
+    def explode(part, n):
+        if not plant.is_raw(part):
+            count[producers[part]] += n
+            for q, k in plant.transformations[producers[part]].inputs.items():
+                explode(q, k * n)
+
+    for o in orders:
+        explode(o["product"], o["quantity"])
+    offered = Counter(t for mt in data["machine_types"] for t in mt["transformations"])
+    index = {t.name: i for i, t in enumerate(plant.transformations)}
+    paths = {p: _unit_work(plant, p)[1] for p in plant.final}
+    period = max(rng.randint(150, 250), 3 * max(paths.values()))
+    utilisation = rng.uniform(0.75, 0.9)
+
+    machines = []
+    for mt in data["machine_types"]:
+        work = sum(
+            count[index[t]] * plant.transformations[index[t]].duration / offered[t]
+            for t in mt["transformations"]
+        )
+        needed = max(1, math.ceil(work / (period * utilisation)))
+        mt["slots"] = min(needed, rng.randint(1, 3))
+        machines += [
+            {"name": f"{mt['name']}_{k}", "type": mt["name"]} for k in range(math.ceil(needed / mt["slots"]))
+        ]
+    data["machines"] = machines
+    data["buffer_capacity"] += sum(mt["slots"] for mt in data["machine_types"]) // 2
+
+    total = sum(_unit_work(plant, o["product"])[0] * o["quantity"] for o in orders)
+    done = 0
+    for o in orders:
+        done += _unit_work(plant, o["product"])[0] * o["quantity"]
+        o["deadline"] = int(max(paths[o["product"]], period * done / total) * rng.uniform(0.95, 1.1)) + 1
+    data["orders"] = orders
+
+
+def _price_and_orders(data: dict, rng: random.Random, dense: bool = False) -> dict:
     plant = Plant(PlantConfig.model_validate(data))
     cost = material_costs(plant)
     for p in data["part_types"]:
@@ -79,19 +140,22 @@ def _price_and_orders(data: dict, rng: random.Random) -> dict:
             p["price"] = round(cost[p["name"]] * rng.uniform(1.2, 1.6))
     avg_price = sum(p.get("price", 0) for p in data["part_types"]) / len(plant.final)
 
-    orders = [
-        {"product": rng.choice(plant.final), "quantity": rng.randint(1, 4), "deadline": 10_000}
-        for _ in range(rng.randint(2, 5))
-    ]
-    data["orders"] = orders
-    sim = Simulation(Plant(PlantConfig.model_validate(data)))
-    sim.run(pull, 600)
-    # Deadlines around the time the pull heuristic needs, so some plants are tight and some are easy.
-    data["orders"] = [
-        o | {"deadline": max(5, int(s.completed_at * rng.uniform(0.85, 1.3)))}
-        for o, s in zip(orders, sim.orders, strict=True)
-        if s.completed_at is not None
-    ]
+    if dense:
+        _design_dense(data, plant, rng)
+    else:
+        orders = [
+            {"product": rng.choice(plant.final), "quantity": rng.randint(1, 4), "deadline": 10_000}
+            for _ in range(rng.randint(2, 5))
+        ]
+        data["orders"] = orders
+        sim = Simulation(Plant(PlantConfig.model_validate(data)))
+        sim.run(pull, 600)
+        # Deadlines around the time the pull heuristic needs, so some plants are tight and some are easy.
+        data["orders"] = [
+            o | {"deadline": max(5, int(s.completed_at * rng.uniform(0.85, 1.3)))}
+            for o, s in zip(orders, sim.orders, strict=True)
+            if s.completed_at is not None
+        ]
     data["reward"] = {
         "holding_cost": round(avg_price / 650, 4),
         "lateness": round(avg_price / 65, 4),
@@ -101,20 +165,24 @@ def _price_and_orders(data: dict, rng: random.Random) -> dict:
     return data
 
 
-def random_plant(seed: int, name: str | None = None) -> PlantConfig:
-    """A random but valid plant with calibrated order deadlines and reward weights scaled to its prices."""
+def random_plant(seed: int, name: str | None = None, dense: bool = False) -> PlantConfig:
+    """A random but valid plant with calibrated order deadlines and reward weights scaled to its prices.
+
+    `dense`: capacity laid out for the order book (~80% utilisation of every machine type) and deadlines
+    following the cumulative workload, i.e. a busy plant as it would be designed in practice.
+    """
     rng = random.Random(seed)
     for _ in range(100):
-        data = _draft(rng)
+        data = _draft(rng, dense)
         config = PlantConfig.model_validate(data)
         if any(i.level == "error" for i in validate(config)):
             continue
         plant = Plant(config)
         if not plant.final or any(math.isinf(c) for c in material_costs(plant).values()):
             continue
-        data = _price_and_orders(data, rng)
+        data = _price_and_orders(data, rng, dense)
         if not data["orders"]:
             continue
-        data["name"] = name or f"generated-{seed}"
+        data["name"] = name or f"{'dense' if dense else 'generated'}-{seed}"
         return PlantConfig.model_validate(data)
     raise RuntimeError(f"no valid plant for seed {seed}")

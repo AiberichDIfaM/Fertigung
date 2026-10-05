@@ -151,27 +151,43 @@ A model only fits plants with the same machines, transformations and final produ
 - `pull`: picks the next product (open orders by deadline, else the best margin), explodes its bill of
   materials against what is already in the buffer or in progress and only starts the net requirements, closest
   to the final product first. It never overfills the buffer, because intermediate outputs are reserved in advance.
-- `lookahead`: a rollout algorithm on top of pull. At every decision it tries pull's choice, waiting and the
-  other dispatches pull would consider on copies of the simulation, lets pull finish each copy until the end
-  of the episode and takes the best by unshaped reward. The simulation is deterministic and pull's choice is
-  always a candidate, so it is never worse than pull. `units > 1` adds work-ahead candidates for later products
-  (`PullMulti`); that helped on some plants and hurt on others, so the default is 1.
+- `pull_multi` (`PullMulti`): pull planned for the next three products at once, so orders that need different
+  machines progress in parallel. Much better than pull on busy plants, much worse on lightly loaded ones.
+- `dbr` (`DrumBufferRope`): drum-buffer-rope from the theory of constraints. The machine type with the highest
+  load per slot is the drum; its operations start whenever needed, other work for later orders is released only
+  as fast as the drum will consume it, and later orders may not take the buffer space the most urgent one needs.
+  A robust all-rounder: slightly better than pull on light and busy plants, never catastrophic, but well below
+  `pull_multi` on busy plants. Without the buffer reserve it deadlocks the reference plant: here the shared buffer
+  is as much a bottleneck as any machine.
+- `lookahead`: a rollout algorithm. It first simulates pull, `pull_multi` and `dbr` to the end of the episode
+  and takes the best as its base heuristic. At every decision it then tries the base choice, the choices of all
+  three, waiting and the other dispatches pull would consider on copies of the simulation, lets the base
+  heuristic finish each copy and takes the best by unshaped reward. The simulation is deterministic and the base
+  choice is always a candidate, so it is never worse than the best of the three heuristics.
 - `fifo` (oldest buffered part first) and `random` as weak baselines.
 
-Unshaped reward over the default horizon:
+Unshaped reward over the default horizon. "Busy plants" come from `random_plant(seed, dense=True)`: capacity laid
+out for the order book (~80% utilisation per machine type) and deadlines that follow the cumulative workload.
 
-| Policy | Reference plant | 20 unseen generated plants (mean) | vs. pull | Time per episode (reference) |
+| Policy | Reference plant | 20 generated plants (mean) | 6 busy plants (mean) | vs. pull |
 |---|---|---|---|---|
-| `lookahead` | **9.46** | **4.27** | better on 19, worse on 0 | ~50 s |
-| reference model (PPO) | 5.74 | – | – | < 1 s |
-| `pull` | 5.04 | 0.58 | – | 0.1 s |
+| `lookahead` | **9.46** | **5.44** | **-11.1** | better on 27 of 27 plants |
+| `dbr` | 4.91 | 1.08 | -43.5 | |
+| `pull_multi` | -103.3 | -46.7 | -22.8 | |
+| reference model (PPO) | 5.74 | – | – | |
+| `pull` | 5.04 | 0.58 | -55.7 | |
 
-`lookahead` is the best scheduler in the package. It trades a little on-time delivery for profit when the reward
-weights make that worthwhile (46 instead of 52 orders on time over the 20 plants), and it is slow on large
-plants for batch simulation, although a single decision takes only about 70 ms there, fast enough to schedule
-a real plant online. Imitating it with the candidate network (`pretrain: lookahead`) did not work: the network
-learns only a quarter of lookahead's deviations from pull on unseen states, and its wrong deviations compound
-into schedules far worse than pull.
+`lookahead` is the best scheduler in the package; an episode takes up to ~4 min on the larger plants, a single
+decision well under 200 ms, fast enough to schedule a real plant online. It trades some on-time delivery for
+profit when the reward weights make that worthwhile. Imitating it with the candidate network
+(`pretrain: lookahead`) did not work: the network learns only a quarter of lookahead's deviations from pull on
+unseen states, and its wrong deviations compound into schedules far worse than pull.
+
+An exact CP-SAT model of the same problem (outside the package, OR-Tools) confirmed that the simulator and the
+objective are modelled consistently, but with a few minutes per plant it did not improve on lookahead on the
+reference plant, found no solution on the largest busy plants and gave no useful bounds. On one busy plant it
+beat the old pull-based lookahead (12.7 vs -2.4); analysing that schedule led to running orders in parallel
+(`pull_multi`), with which lookahead now reaches 53.0 there.
 
 ### Reference plant and model
 
@@ -306,7 +322,7 @@ src/fertigung/
 ├── ui/            # browser UI served at /
 ├── configs/       # bundled reference plant
 ├── models/        # bundled models: reference (plant-specific), general (transfer)
-├── generator.py   # random valid plants for transfer training and benchmarks
+├── generator.py   # random valid plants (light or busy) for training and benchmarks
 ├── heuristics.py  # baseline dispatch policies
 ├── evaluation.py  # KPIs per policy
 └── cli.py
