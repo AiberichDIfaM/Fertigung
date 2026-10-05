@@ -4,7 +4,7 @@ import math
 from collections import Counter
 
 from fertigung.core.validation import Issue
-from fertigung.shop.config import ShopConfig
+from fertigung.shop.config import ShopConfig, minutes_of_day
 
 
 def validate_shop(config: ShopConfig) -> list[Issue]:
@@ -73,6 +73,16 @@ def validate_shop(config: ShopConfig) -> list[Issue]:
                 f"shifts have at most {max_workers}"
             )
 
+    window = longest_staffed_window(config)
+    for mt in config.machine_types:
+        for name in mt.transformations:
+            t = transformations.get(name)
+            if t and not t.interruptible and mt.operators > 0 and t.duration > window:
+                error(
+                    f"'{name}' on '{mt.name}' takes {t.duration} minutes without interruption, "
+                    f"the longest staffed stretch is {window}"
+                )
+
     positions = Counter(tuple(m.position) for m in config.machines)
     for position, n in positions.items():
         if n > 1:
@@ -91,3 +101,22 @@ def validate_shop(config: ShopConfig) -> list[Issue]:
                 f"production alone takes at least {lead[o.product]}"
             )
     return issues
+
+
+def longest_staffed_window(config: ShopConfig) -> int:
+    """Longest stretch of minutes on one day covered by back-to-back shifts with at least one worker."""
+    longest = 0
+    for day in ("mon", "tue", "wed", "thu", "fri", "sat", "sun"):
+        spans = sorted(
+            (minutes_of_day(s.start), minutes_of_day(s.end))
+            for s in config.staff.shifts
+            if day in s.days and s.workers > 0
+        )
+        start = end = None
+        for a, b in spans:
+            if end is not None and a <= end:
+                end = max(end, b)
+            else:
+                start, end = a, b
+            longest = max(longest, end - start)
+    return longest

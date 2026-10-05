@@ -38,6 +38,10 @@ def test_semantic_errors():
     data = copy.deepcopy(WORKSHOP)
     data["machines"][3]["input_buffer"] = 3  # welding needs five inputs for a frame
     data["machine_types"][3]["setup"]["operators"] = 7
+    data["transformations"][5]["duration"] = 1000  # coating may not be interrupted, staffed stretch is 960
     messages = [i.message for i in validate_shop(load_shop(data)) if i.level == "error"]
     assert any("input buffer 3 is smaller than the 5 inputs of 'weld-frame'" in m for m in messages)
     assert any("setting up machine 'coating-1' needs 7 workers" in m for m in messages)
+    assert any(
+        "'coat-frame' on 'coating-line' takes 1000 minutes without interruption" in m for m in messages
+    )

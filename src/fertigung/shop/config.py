@@ -59,6 +59,10 @@ class TransformationConfig(_Model):
     setup_family: str | None = Field(
         None, description="Tooling family; changing it on a machine costs setup time"
     )
+    interruptible: bool = Field(
+        True,
+        description="May pause outside staffed hours and resume later; false: must finish in one stretch",
+    )
 
 
 class SetupTimeConfig(_Model):

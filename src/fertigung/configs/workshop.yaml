@@ -34,8 +34,8 @@ transformations:
   - {name: bend, inputs: [blank-thin], output: bent-part, duration: 5, setup_family: tool-a}
   - {name: weld-frame, inputs: [tube, tube, tube, tube, blank-thick], output: frame-raw, duration: 25, setup_family: frame}
   - {name: weld-housing, inputs: [bent-part, bent-part, blank-thin], output: housing-raw, duration: 30, setup_family: housing}
-  - {name: coat-frame, inputs: [frame-raw, powder], output: frame-coated, duration: 20, setup_family: ral7035}
-  - {name: coat-housing, inputs: [housing-raw, powder], output: housing-coated, duration: 20, setup_family: ral9005}
+  - {name: coat-frame, inputs: [frame-raw, powder], output: frame-coated, duration: 20, setup_family: ral7035, interruptible: false}
+  - {name: coat-housing, inputs: [housing-raw, powder], output: housing-coated, duration: 20, setup_family: ral9005, interruptible: false}
   - {name: assemble-frame, inputs: [frame-coated, screws], output: frame, duration: 15}
   - {name: assemble-housing, inputs: [housing-coated, bent-part, screws], output: housing, duration: 20}
   - {name: assemble-bracket, inputs: [bent-part, screws], output: bracket, duration: 8}
