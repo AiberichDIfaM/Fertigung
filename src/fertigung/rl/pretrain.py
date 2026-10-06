@@ -1,46 +1,74 @@
+import multiprocessing
+
 import numpy as np
 import torch
 from sb3_contrib import MaskablePPO
 
+from fertigung.core.config import PlantConfig
 from fertigung.heuristics import make_policy
 from fertigung.rl.env import JobShopEnv
 
 
-def expert_rollouts(
-    env: JobShopEnv, expert: str, episodes: int, gamma: float, seed: int = 0
-) -> dict[str, np.ndarray]:
-    """Label every visited state with the expert's action; actions are randomized with rising epsilon
-    across episodes so the data also covers states off the expert's path."""
-    env.reset(seed=seed)
+def _episode(task: tuple) -> dict[str, list]:
+    config, env_kwargs, expert, epsilon, seed, gamma = task
+    env = JobShopEnv(PlantConfig.model_validate(config), **env_kwargs)
+    obs, _ = env.reset(seed=seed)
     rng = np.random.default_rng(seed)
     policy = make_policy(expert, seed)
-    obs_l, act_l, mask_l, ret_l = [], [], [], []
-    for episode in range(episodes):
-        epsilon = 0.3 * episode / max(episodes - 1, 1)
-        obs, _ = env.reset()
-        rewards = []
-        while True:
-            mask = env.action_masks()
-            choice = policy(env.sim)
-            label = env.observer.action_for(choice, env.sim)
-            obs_l.append(obs)
-            act_l.append(label)
-            mask_l.append(mask)
-            action = rng.choice(np.flatnonzero(mask)) if rng.random() < epsilon else label
-            obs, reward, terminated, truncated, _ = env.step(action)
-            rewards.append(reward)
-            if terminated or truncated:
-                break
-        ret, returns = 0.0, []
-        for r in reversed(rewards):
-            ret = r + gamma * ret
-            returns.append(ret)
-        ret_l += reversed(returns)
+    data = {"obs": [], "actions": [], "masks": [], "rewards": []}
+    while True:
+        mask = env.action_masks()
+        label = env.observer.action_for(policy(env.sim), env.sim)
+        data["obs"].append(obs)
+        data["actions"].append(label)
+        data["masks"].append(mask)
+        action = rng.choice(np.flatnonzero(mask)) if rng.random() < epsilon else label
+        obs, reward, terminated, truncated, _ = env.step(action)
+        data["rewards"].append(reward)
+        if terminated or truncated:
+            break
+    ret, returns = 0.0, []
+    for r in reversed(data.pop("rewards")):
+        ret = r + gamma * ret
+        returns.append(ret)
+    data["returns"] = returns[::-1]
+    return data
+
+
+def expert_rollouts(
+    configs: list[PlantConfig],
+    env_kwargs: dict,
+    expert: str,
+    episodes: int,
+    gamma: float,
+    seed: int = 0,
+    workers: int = 1,
+) -> dict[str, np.ndarray]:
+    """Label every visited state with the expert's action. Each episode runs on a random plant from
+    `configs`; actions are randomized with rising epsilon across episodes so the data also covers states
+    off the expert's path. Episodes run in `workers` processes (useful for the slow lookahead expert)."""
+    rng = np.random.default_rng(seed)
+    tasks = [
+        (
+            configs[rng.integers(len(configs))].model_dump(),
+            env_kwargs,
+            expert,
+            0.3 * i / max(episodes - 1, 1),
+            seed + i,
+            gamma,
+        )
+        for i in range(episodes)
+    ]
+    if workers > 1:
+        with multiprocessing.get_context("spawn").Pool(workers) as pool:
+            parts = pool.map(_episode, tasks)
+    else:
+        parts = [_episode(task) for task in tasks]
     return {
-        "obs": np.asarray(obs_l, dtype=np.float32),
-        "actions": np.asarray(act_l),
-        "masks": np.asarray(mask_l),
-        "returns": np.asarray(ret_l, dtype=np.float32),
+        "obs": np.asarray([o for p in parts for o in p["obs"]], dtype=np.float32),
+        "actions": np.asarray([a for p in parts for a in p["actions"]]),
+        "masks": np.asarray([m for p in parts for m in p["masks"]]),
+        "returns": np.asarray([r for p in parts for r in p["returns"]], dtype=np.float32),
     }
 
 

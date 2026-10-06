@@ -62,3 +62,17 @@ def test_api_key(tmp_path):
     assert client.get("/plants").status_code == 401
     assert client.get("/plants", headers={"X-API-Key": "wrong"}).status_code == 401
     assert client.get("/plants", headers={"X-API-Key": "s3cret"}).status_code == 200
+
+
+def test_shop_routes(tmp_path):
+    client = TestClient(create_app(tmp_path, start_worker=False))
+    [shop] = client.get("/shops").json()
+    assert shop["name"] == "workshop"
+    assert client.post(f"/shops/{shop['id']}/validate").json()["issues"] == []
+    broken = shop["config"] | {"machines": []}
+    assert client.post("/shops/validate", json=broken).status_code == 422
+    sim = client.post("/shop-simulations", json={"shop_id": shop["id"], "minutes": 2000}).json()
+    result = sim["result"]
+    assert result["kpis"]["orders_on_time"] >= 2
+    assert result["jobs"] and result["trips"]
+    assert client.get(f"/shop-simulations/{sim['id']}").json()["id"] == sim["id"]

@@ -17,14 +17,14 @@ from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from fertigung.api.store import Store, now
+from fertigung.api.shop_routes import seed_shop, shop_router
+from fertigung.api.store import Store, get_or_404, now
 from fertigung.api.worker import TrainingWorker, db_path, model_dir
-from fertigung.core.config import PlantConfig, reference_config
+from fertigung.core.config import PlantConfig, default_horizon, reference_config
 from fertigung.core.plant import Plant
 from fertigung.core.validation import material_costs, validate
 from fertigung.evaluation import compare, run_episode
 from fertigung.heuristics import POLICIES, make_policy
-from fertigung.rl.env import default_horizon
 from fertigung.rl.model import META_FILE, MODEL_FILE, TrainedModel, bundled_model_path
 from fertigung.rl.train import TrainingConfig
 
@@ -48,14 +48,15 @@ class PlantSource(BaseModel):
 
 
 class SimulationCreate(PlantSource):
-    policy: Literal["pull", "lookahead", "fifo", "random", "model"] = "pull"
+    policy: Literal["pull", "pull_multi", "dbr", "lookahead", "fifo", "random", "model"] = "pull"
     seed: int = 0
 
 
 class EvaluationCreate(PlantSource):
     episodes: int = Field(5, ge=1, le=50, description="Episodes for the random baseline")
-    policies: list[Literal["pull", "lookahead", "fifo", "random"]] = Field(
-        ["pull", "lookahead", "fifo", "random"], description="Heuristics to compare (lookahead is slow)"
+    policies: list[Literal["pull", "pull_multi", "dbr", "lookahead", "fifo", "random"]] = Field(
+        ["pull", "pull_multi", "lookahead", "fifo", "random"],
+        description="Heuristics to compare (lookahead is slow)",
     )
 
 
@@ -150,6 +151,7 @@ def create_app(
     store = Store(db_path(data))
     worker = TrainingWorker(store, data)
     seed(store, data)
+    seed_shop(store)
 
     def require_key(key: str | None = Security(APIKeyHeader(name="X-API-Key", auto_error=False))):
         if api_key and not (key and secrets.compare_digest(key.encode(), api_key.encode())):
@@ -173,18 +175,12 @@ def create_app(
             raise HTTPException(404, f"model {model_id} not found")
         return TrainedModel(data / model["path"])
 
-    def get_or_404(table: str, id: str) -> dict:
-        row = store.get(table, id)
-        if row is None:
-            raise HTTPException(404, f"{table[:-1]} {id} not found")
-        return row
-
     def resolve(source: PlantSource) -> tuple[PlantConfig, TrainedModel | None, int]:
         trained = load_model(source.model_id) if source.model_id else None
         if source.config is not None:
             config = source.config
         elif source.plant_id:
-            config = PlantConfig.model_validate(get_or_404("plants", source.plant_id)["config"])
+            config = PlantConfig.model_validate(get_or_404(store, "plants", source.plant_id)["config"])
         elif trained:
             config = trained.config
         else:
@@ -228,11 +224,11 @@ def create_app(
 
     @api.get("/plants/{plant_id}")
     def get_plant(plant_id: str):
-        return get_or_404("plants", plant_id)
+        return get_or_404(store, "plants", plant_id)
 
     @api.put("/plants/{plant_id}")
     def update_plant(plant_id: str, config: PlantConfig):
-        get_or_404("plants", plant_id)
+        get_or_404(store, "plants", plant_id)
         return store.update(
             "plants", plant_id, name=config.name, config=config.model_dump(), updated_at=now()
         )
@@ -244,16 +240,16 @@ def create_app(
 
     @api.post("/plants/{plant_id}/validate")
     def validate_plant(plant_id: str):
-        return analyze(PlantConfig.model_validate(get_or_404("plants", plant_id)["config"]))
+        return analyze(PlantConfig.model_validate(get_or_404(store, "plants", plant_id)["config"]))
 
     @api.post("/training-jobs", status_code=201)
     def create_job(body: TrainingJobCreate):
-        plant = get_or_404("plants", body.plant_id)
+        plant = get_or_404(store, "plants", body.plant_id)
         if any(i["level"] == "error" for i in analyze(PlantConfig.model_validate(plant["config"]))["issues"]):
             raise HTTPException(422, "plant has validation errors")
         training = body.training
         if body.init_model_id:
-            base = get_or_404("models", body.init_model_id)
+            base = get_or_404(store, "models", body.init_model_id)
             if base["architecture"] != "transfer":
                 raise HTTPException(422, "only transfer models can be fine-tuned on other plants")
             training = training.model_copy(
@@ -274,12 +270,12 @@ def create_app(
 
     @api.get("/training-jobs/{job_id}")
     def get_job(job_id: str):
-        job = get_or_404("jobs", job_id)
+        job = get_or_404(store, "jobs", job_id)
         return job | {"curve": training_curve(model_dir(data, job_id))}
 
     @api.delete("/training-jobs/{job_id}")
     def cancel_job(job_id: str):
-        job = get_or_404("jobs", job_id)
+        job = get_or_404(store, "jobs", job_id)
         if job["status"] == "queued":
             return store.update("jobs", job_id, status="cancelled", finished_at=now())
         if job["status"] == "running":
@@ -292,11 +288,11 @@ def create_app(
 
     @api.get("/models/{model_id}")
     def get_model(model_id: str):
-        return get_or_404("models", model_id)
+        return get_or_404(store, "models", model_id)
 
     @api.get("/models/{model_id}/download")
     def download_model(model_id: str):
-        model = get_or_404("models", model_id)
+        model = get_or_404(store, "models", model_id)
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
             for name in (MODEL_FILE, META_FILE, "progress.csv"):
@@ -307,7 +303,7 @@ def create_app(
 
     @api.delete("/models/{model_id}", status_code=204)
     def delete_model(model_id: str):
-        model = get_or_404("models", model_id)
+        model = get_or_404(store, "models", model_id)
         store.delete("models", model_id)
         load_model.cache_clear()
         shutil.rmtree(data / model["path"], ignore_errors=True)
@@ -335,7 +331,7 @@ def create_app(
 
     @api.get("/simulations/{simulation_id}")
     def get_simulation(simulation_id: str):
-        return get_or_404("simulations", simulation_id)
+        return get_or_404(store, "simulations", simulation_id)
 
     @api.post("/evaluations")
     def create_evaluation(body: EvaluationCreate):
@@ -348,4 +344,5 @@ def create_app(
         }
 
     app.include_router(api)
+    app.include_router(shop_router(store, [Depends(require_key)]))
     return app

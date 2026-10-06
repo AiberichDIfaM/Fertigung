@@ -5,17 +5,12 @@ import gymnasium as gym
 import networkx as nx
 import numpy as np
 
-from fertigung.core.config import PlantConfig
+from fertigung.core.config import PlantConfig, default_horizon
 from fertigung.core.plant import Plant
 from fertigung.core.reward import Reward
 from fertigung.core.simulation import Simulation
 from fertigung.core.validation import material_costs
 from fertigung.heuristics import pull_plan
-
-
-def default_horizon(config: PlantConfig) -> int:
-    deadlines = [o.deadline for o in config.orders]
-    return int(max(deadlines) * 1.2) if deadlines else 300
 
 
 class Observer:

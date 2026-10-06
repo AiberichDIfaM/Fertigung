@@ -3,10 +3,10 @@ from pathlib import Path
 
 from sb3_contrib import MaskablePPO
 
-from fertigung.core.config import PlantConfig
+from fertigung.core.config import PlantConfig, default_horizon
 from fertigung.core.plant import Plant
 from fertigung.core.simulation import Simulation
-from fertigung.rl.env import CandidateObserver, Observer, default_horizon
+from fertigung.rl.env import CandidateObserver, Observer
 
 MODEL_FILE = "model.zip"
 META_FILE = "meta.json"

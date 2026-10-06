@@ -2,89 +2,8 @@
 const charts = {};
 let graph = null;
 
-const KEY_STORAGE = "fertigung-api-key";
-
-function storedKey() {
-  try {
-    return localStorage.getItem(KEY_STORAGE) || "";
-  } catch {
-    return "";
-  }
-}
-
-function storeKey(key) {
-  try {
-    localStorage.setItem(KEY_STORAGE, key);
-  } catch {
-    // Without storage the key is asked for again on the next load.
-  }
-  sessionKey = key;
-}
-
-let sessionKey = storedKey();
-
-async function request(method, path, body, retry = true) {
-  const sentKey = sessionKey;
-  const headers = sentKey ? { "X-API-Key": sentKey } : {};
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-  const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
-  if (res.status === 401 && retry) {
-    // Parallel requests fail together; only the first one asks, the others retry with the new key.
-    const key = sessionKey !== sentKey ? sessionKey : prompt("This server requires an API key:");
-    if (key) {
-      storeKey(key.trim());
-      return request(method, path, body, false);
-    }
-  }
-  return res;
-}
-
-async function api(method, path, body) {
-  const res = await request(method, path, body);
-  if (res.status === 204) return null;
-  const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(errorMessage(data) || res.statusText);
-  return data;
-}
-
-function errorMessage(data) {
-  const detail = data?.detail;
-  if (Array.isArray(detail)) return detail.map((e) => `${e.loc.slice(1).join(".")}: ${e.msg}`).join("\n");
-  return detail;
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function debounce(fn, ms) {
-  let timer;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), ms);
-  };
-}
-
-function colorFor(name) {
-  let h = 0;
-  for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
-  return `hsl(${150 + (h % 150)}, 50%, 55%)`;
-}
-
-function cssVar(name) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-}
-
-function download(filename, blob) {
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(link.href);
-}
-
 document.addEventListener("alpine:init", () => {
-  Alpine.data("app", () => ({
+  Alpine.data("app", () => component(configEditor("/plants", "plant"), {
     tabs: [
       { id: "plant", label: "Plant" },
       { id: "orders", label: "Orders & reward" },
@@ -93,16 +12,8 @@ document.addEventListener("alpine:init", () => {
       { id: "models", label: "Models" },
     ],
     tab: location.hash.slice(1) || "plant",
-    toast: "",
-    busy: false,
     schemas: {},
-    plants: [],
-    plantId: "",
-    currentPlantId: "",
     config: { name: "", buffer_capacity: 10, part_types: [], transformations: [], machine_types: [], machines: [], orders: [], reward: {} },
-    saved: "",
-    analysis: null,
-    issues: [],
     jobs: [],
     selectedJobId: null,
     selectedJob: null,
@@ -124,8 +35,8 @@ document.addEventListener("alpine:init", () => {
         const openapi = await api("GET", "/openapi.json");
         this.schemas = openapi.components.schemas;
         this.resetTraining();
-        await Promise.all([this.loadPlants(), this.loadModels(), this.loadJobs()]);
-        if (this.plants.length) this.selectPlant(this.plants[0].id);
+        await Promise.all([this.loadRecords(), this.loadModels(), this.loadJobs()]);
+        if (this.records.length) this.selectRecord(this.records[0].id);
       } catch (e) {
         this.notify(e);
       }
@@ -134,58 +45,8 @@ document.addEventListener("alpine:init", () => {
       setInterval(() => this.pollJobs(), 3000);
     },
 
-    notify(message) {
-      this.toast = message instanceof Error ? message.message : message;
-      setTimeout(() => (this.toast = ""), 6000);
-    },
-
-    fmt(v) {
-      if (v === null || v === undefined) return "–";
-      if (typeof v !== "number") return v;
-      return Number.isInteger(v) ? v.toLocaleString() : v.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    },
-
-    splitList(text) {
-      return text.split(",").map((s) => s.trim()).filter(Boolean);
-    },
-
     schemaProps(name) {
       return this.schemas[name]?.properties || {};
-    },
-
-    get dirty() {
-      return JSON.stringify(this.config) !== this.saved;
-    },
-
-    get partNames() {
-      return this.config.part_types.map((p) => p.name).filter(Boolean);
-    },
-
-    get finalProducts() {
-      return this.analysis?.final || this.partNames;
-    },
-
-    kindOf(name) {
-      if (!this.analysis) return "";
-      if (this.analysis.raw.includes(name)) return "raw";
-      if (this.analysis.final.includes(name)) return "final";
-      if (this.analysis.intermediate.includes(name)) return "intermediate";
-      return "";
-    },
-
-    // Plants
-    async loadPlants() {
-      this.plants = await api("GET", "/plants");
-    },
-
-    selectPlant(id) {
-      const plant = this.plants.find((p) => p.id === id);
-      if (!plant || (this.dirty && this.saved && !confirm("Discard unsaved changes?"))) {
-        this.$nextTick(() => (this.plantId = this.currentPlantId));
-        return;
-      }
-      this.plantId = this.currentPlantId = id;
-      this.setConfig(plant.config);
     },
 
     setConfig(config) {
@@ -195,65 +56,8 @@ document.addEventListener("alpine:init", () => {
       this.validate();
     },
 
-    async savePlant() {
-      try {
-        const plant = this.plantId
-          ? await api("PUT", `/plants/${this.plantId}`, this.config)
-          : await api("POST", "/plants", this.config);
-        await this.loadPlants();
-        this.plantId = this.currentPlantId = plant.id;
-        this.saved = JSON.stringify(this.config);
-        this.notify(`Saved ${plant.name}.`);
-      } catch (e) {
-        this.notify(e);
-      }
-    },
-
-    duplicatePlant() {
-      const copy = clone(this.config);
-      copy.name = `${copy.name} copy`;
-      this.plantId = this.currentPlantId = "";
-      this.config = copy;
-      this.saved = "";
-    },
-
-    async deletePlant() {
-      if (!confirm(`Delete plant ${this.config.name}?`)) return;
-      try {
-        await api("DELETE", `/plants/${this.plantId}`);
-        this.saved = "";
-        await this.loadPlants();
-        if (this.plants.length) this.selectPlant(this.plants[0].id);
-      } catch (e) {
-        this.notify(e);
-      }
-    },
-
-    exportPlant() {
-      download(`${this.config.name || "plant"}.json`, new Blob([JSON.stringify(this.config, null, 2)], { type: "application/json" }));
-    },
-
-    async importPlant(event) {
-      const file = event.target.files[0];
-      event.target.value = "";
-      if (!file) return;
-      try {
-        this.setConfig(JSON.parse(await file.text()));
-        this.plantId = this.currentPlantId = "";
-        this.saved = "";
-      } catch (e) {
-        this.notify(`Import failed: ${e.message}`);
-      }
-    },
-
-    async validate() {
-      try {
-        this.analysis = await api("POST", "/plants/validate", this.config);
-        this.issues = this.analysis.issues;
-        this.drawGraph();
-      } catch (e) {
-        this.issues = e.message.split("\n").map((message) => ({ level: "error", message }));
-      }
+    afterValidate() {
+      this.drawGraph();
     },
 
     drawGraph() {
@@ -297,7 +101,7 @@ document.addEventListener("alpine:init", () => {
       const training = { ...this.training, pretrain: this.training.pretrain || null };
       for (const key of Object.keys(training)) if (training[key] === "") training[key] = null;
       try {
-        const body = { plant_id: this.plantId, training };
+        const body = { plant_id: this.recordId, training };
         if (this.initModelId) body.init_model_id = this.initModelId;
         const job = await api("POST", "/training-jobs", body);
         await this.loadJobs();

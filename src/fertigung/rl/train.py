@@ -12,10 +12,10 @@ from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.logger import configure
 
-from fertigung.core.config import PlantConfig
+from fertigung.core.config import PlantConfig, default_horizon
 from fertigung.evaluation import evaluate
 from fertigung.generator import random_plant
-from fertigung.rl.env import JobShopEnv, default_horizon
+from fertigung.rl.env import JobShopEnv
 from fertigung.rl.model import MODEL_FILE, ModelPolicy, TrainedModel, make_observer, model_path, write_meta
 from fertigung.rl.policy import CandidatePolicy
 from fertigung.rl.pretrain import behavior_cloning, expert_rollouts
@@ -37,8 +37,11 @@ class TrainingConfig(BaseModel):
     ent_coef: float = Field(0.001, ge=0)
     net_arch: list[int] = [256, 256]
     eval_freq: int = Field(20_000, ge=1, description="Timesteps between evaluations")
-    pretrain: Literal["pull", "fifo"] | None = Field("pull", description="Heuristic to imitate before PPO")
+    pretrain: Literal["pull", "lookahead", "fifo"] | None = Field(
+        "pull", description="Heuristic to imitate before PPO (lookahead: better but slow teacher)"
+    )
     pretrain_episodes: int = Field(30, ge=1)
+    pretrain_workers: int = Field(1, ge=1, description="Processes generating imitation data")
     pretrain_epochs: int = Field(150, ge=1)
     architecture: Literal["plant", "transfer"] = Field(
         "plant",
@@ -148,11 +151,13 @@ def train(
         model.set_parameters(str(model_path(cfg.init_model) / MODEL_FILE), device="cpu")
     elif cfg.pretrain:
         data = expert_rollouts(
-            JobShopEnv(train_plants, **env_kwargs),
+            train_plants if transfer else [plant],
+            env_kwargs,
             cfg.pretrain,
             cfg.pretrain_episodes,
             plant.reward.gamma,
             cfg.seed,
+            cfg.pretrain_workers,
         )
         behavior_cloning(model, data, cfg.pretrain_epochs)
     if cfg.init_model or cfg.pretrain:

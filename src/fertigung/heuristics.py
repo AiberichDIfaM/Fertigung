@@ -3,7 +3,9 @@ import random
 from collections import Counter
 from functools import cache
 
+from fertigung.core.config import default_horizon
 from fertigung.core.plant import Plant
+from fertigung.core.reward import objective
 from fertigung.core.simulation import Simulation
 from fertigung.core.validation import material_costs
 
@@ -130,18 +132,156 @@ class PullMulti:
         return pull_plan(sim, self.units, self.headroom)[2]
 
 
-class Lookahead:
-    """Rollout algorithm on top of the pull heuristic.
+class DrumBufferRope:
+    """Drum-buffer-rope: keep the bottleneck machine type (the drum) busy and release other work only as fast
+    as the drum will need it.
 
-    Rollouts end at `until`, else at the end of the running episode (`sim.end`).
-    At every decision it tries the pull choice, waiting and work-ahead candidates (from planning `units`
-    products at once) on copies of the simulation, follows each with the pull heuristic until the end of the
-    episode and takes the one with the best unshaped reward. Because the simulation is deterministic and the
-    pull choice is always among the candidates (and wins ties), the result is never worse than pull itself.
+    The drum is the machine type with the highest load per slot for the open orders. Drum operations start
+    whenever some open order unit needs them. Feeding work for a later unit starts only once the drum work
+    queued for the units before it fits into `rope` times the supply lead time of the drum, so parts arrive
+    in time without piling up. The buffer is never overfilled; choices follow deadlines, then closeness to
+    the final product.
     """
 
-    def __init__(self, until: int | None = None, units: int = 1, max_candidates: int = 4):
+    def __init__(self, rope: float = 0.5):
+        self.rope = rope
+        self._setup = None
+
+    def _plan(self, sim: Simulation):
+        plant = sim.plant
+        producers = _producers(plant)
+        work = Counter()
+        types = {m.type for m in plant.machines}
+        slots = Counter()
+        for m in plant.machines:
+            slots[m.type] += m.slots
+        runs_on = {
+            t: {m.type for m in plant.machines if t in m.transformations}
+            for t in plant.assigned_transformations
+        }
+        count = Counter()
+
+        def explode(part, n):
+            if not plant.is_raw(part):
+                count[producers[part]] += n
+                for q, k in plant.transformations[producers[part]].inputs.items():
+                    explode(q, k * n)
+
+        for o in sim.orders:
+            if o.open:
+                explode(o.product, o.quantity - o.delivered)
+        for t, n in count.items():
+            for mt in runs_on[t]:
+                work[mt] += n * plant.transformations[t].duration / len(runs_on[t])
+        drum = max(types, key=lambda mt: work[mt] / slots[mt])
+        drum_ops = {t for t, kinds in runs_on.items() if drum in kinds}
+
+        @cache
+        def supply(part):
+            """Longest processing chain needed to make `part` from raw materials."""
+            if plant.is_raw(part):
+                return 0
+            t = plant.transformations[producers[part]]
+            return t.duration + max((supply(q) for q in t.inputs), default=0)
+
+        lead = max((supply(q) for t in drum_ops for q in plant.transformations[t].inputs), default=0)
+        return drum_ops, slots[drum], max(lead, 1) * self.rope
+
+    def __call__(self, sim: Simulation) -> tuple[int, int] | None:
+        if self._setup is None or self._setup[0] != (id(sim), sim.plant):
+            self._setup = ((id(sim), sim.plant), self._plan(sim))
+        drum_ops, drum_slots, rope = self._setup[1]
+        plant = sim.plant
+        producers = _producers(plant)
+        in_flight = _in_flight(sim)
+        targets = _targets(sim, in_flight, sum(o.quantity - o.delivered for o in sim.orders if o.open) or 1)
+        if not targets:
+            return None
+        available = sim.buffer_counts() + Counter(
+            {p: n for p, n in in_flight.items() if not plant.is_final(p)}
+        )
+        need = [Counter() for _ in targets]
+
+        def explode(part, n, unit):
+            if plant.is_raw(part):
+                return
+            used = min(available[part], n)
+            available[part] -= used
+            if n > used:
+                need[unit][part] += n - used
+                for q, k in plant.transformations[producers[part]].inputs.items():
+                    explode(q, k * (n - used), unit)
+
+        for unit, target in enumerate(targets):
+            explode(target, 1, unit)
+
+        # Drum time queued ahead of each unit decides whether its feeding work may be released.
+        backlog, queued = [], 0.0
+        for unit_need in need:
+            backlog.append(queued / drum_slots)
+            queued += sum(
+                n * plant.transformations[producers[p]].duration
+                for p, n in unit_need.items()
+                if producers[p] in drum_ops
+            )
+
+        reserved = len(sim.buffer) + sum(n for p, n in in_flight.items() if not plant.is_final(p))
+        counts = sim.buffer_counts()
+        best, best_key = None, None
+        for unit, unit_need in enumerate(need):
+            for out in unit_need:
+                t = producers[out]
+                if unit > 0 and backlog[unit] > rope:
+                    continue
+                tr = plant.transformations[t]
+                wip = sum(k for q, k in tr.inputs.items() if not plant.is_raw(q))
+                limit = plant.buffer_capacity - (_headroom(plant) if unit > 0 else 0)
+                if not plant.is_final(out) and reserved - wip + 1 > limit:
+                    continue
+                for m, position in _runners(plant)[t]:
+                    if not sim.can_dispatch(m, t, counts):
+                        continue
+                    key = (unit, plant.distance_to_final[out], -sim.free_slots(m), m, position)
+                    if best_key is None or key < best_key:
+                        best, best_key = (m, t), key
+        return best
+
+
+class Lookahead:
+    """Rollout algorithm on top of a base heuristic.
+
+    At every decision it tries the base heuristic's choice, the choices of pull and PullMulti, waiting and the
+    other dispatches pull would consider on copies of the simulation, lets the base heuristic finish each copy
+    until the end of the episode (`until`, else `sim.end`) and takes the one with the best unshaped reward.
+
+    `base="auto"` simulates pull and PullMulti once at the start of an episode and uses the better one: pull
+    suits lightly loaded plants, PullMulti (several orders in parallel) busy ones. The simulation is
+    deterministic and the base choice is always a candidate (and wins ties), so the result is never worse
+    than the base heuristic.
+    """
+
+    def __init__(self, until: int | None = None, units: int = 1, max_candidates: int = 6, base: str = "auto"):
         self.until, self.units, self.max_candidates = until, units, max_candidates
+        self.base_name = base
+        self.multi = PullMulti(3, 0)
+        self.dbr = DrumBufferRope()
+        self.base = None
+        self._episode = None
+
+    def _pick_base(self, sim: Simulation, end: int):
+        options = {"pull": pull, "multi": self.multi, "dbr": self.dbr}
+        if self.base_name != "auto":
+            return options[self.base_name]
+        values = {name: self._finish(sim.clone(), policy, end) for name, policy in options.items()}
+        return options[max(values, key=lambda name: round(values[name], 9))]
+
+    @staticmethod
+    def _finish(rollout: Simulation, policy, end: int) -> float:
+        while rollout.time < end:
+            while (c := policy(rollout)) is not None:
+                rollout.dispatch(*c)
+            rollout.advance()
+        return objective(rollout)
 
     def candidates(self, sim: Simulation) -> list[tuple[int, int] | None]:
         plant = sim.plant
@@ -152,29 +292,30 @@ class Lookahead:
             out = plant.transformations[t].output
             if need[out] > 0 and producers.get(out) == t:
                 ahead.append((plant.distance_to_final[out], -sim.free_slots(m), (m, t)))
-        choices = [pull(sim), None] + [c for *_, c in sorted(ahead)]
+        choices = [self.base(sim), pull(sim), self.multi(sim), self.dbr(sim), None] + [
+            c for *_, c in sorted(ahead)
+        ]
         return list(dict.fromkeys(choices))[: self.max_candidates]
 
     def rollout(self, sim: Simulation, choice: tuple[int, int] | None, end: int) -> tuple[tuple, float]:
-        """State right after `choice` and the objective at `end` when pull takes over from there."""
+        """State right after `choice` and the objective at `end` when the base heuristic takes over."""
         rollout = sim.clone()
         if choice is None:
             rollout.advance()
         else:
             rollout.dispatch(*choice)
-        after = _state(rollout)
-        while rollout.time < end:
-            while (c := pull(rollout)) is not None:
-                rollout.dispatch(*c)
-            rollout.advance()
-        return after, _objective(rollout)
+        return _state(rollout), self._finish(rollout, self.base, end)
 
     def __call__(self, sim: Simulation) -> tuple[int, int] | None:
+        end = self.until or sim.end or default_horizon(sim.plant.config)
+        if self._episode != (id(sim), sim.plant):
+            self._episode = (id(sim), sim.plant)
+            self.base = self._pick_base(sim, end)
+            self._memo = None
         options = self.candidates(sim)
         if len(options) == 1:
             return options[0]
-        end = self.until or sim.end or _episode_end(sim.plant)
-        # The chosen option's rollout is exactly what the pull option of the next decision would simulate.
+        # The chosen option's rollout is exactly what the base option of the next decision would simulate.
         memo, self._memo = getattr(self, "_memo", None), None
         reuse = memo is not None and memo[0] == _state(sim)
         results = [memo if i == 0 and reuse else self.rollout(sim, c, end) for i, c in enumerate(options)]
@@ -185,24 +326,6 @@ class Lookahead:
 
 def _state(sim: Simulation) -> tuple:
     return (id(sim.plant), sim.time, sim._next_job, len(sim.buffer), sum(len(jobs) for jobs in sim.jobs))
-
-
-def _objective(sim: Simulation) -> float:
-    """Unshaped reward accumulated so far (same weights as Reward without shaping)."""
-    c, ledger = sim.plant.config.reward, sim.ledger
-    return c.scale * (
-        c.revenue * ledger.revenue
-        - c.material_cost * ledger.material_cost
-        - c.holding_cost * ledger.holding_part_ticks
-        - c.lateness * ledger.late_unit_ticks
-        - c.idle * ledger.idle_slot_ticks
-    )
-
-
-@cache
-def _episode_end(plant: Plant) -> int:
-    deadlines = [o.deadline for o in plant.config.orders]
-    return int(max(deadlines) * 1.2) if deadlines else 300
 
 
 def _in_flight(sim: Simulation) -> Counter:
@@ -257,6 +380,8 @@ class RandomPolicy:
 POLICIES = {
     "pull": lambda seed=None: pull,
     "lookahead": lambda seed=None: Lookahead(),
+    "pull_multi": lambda seed=None: PullMulti(3, 0),
+    "dbr": lambda seed=None: DrumBufferRope(),
     "fifo": lambda seed=None: fifo,
     "random": lambda seed=None: RandomPolicy(seed),
 }

@@ -105,15 +105,26 @@ class PlantConfig(_Model):
         return self
 
 
-def load_config(source: str | Path | dict) -> PlantConfig:
+def read_data(source: str | Path | dict) -> dict:
+    """Raw config data from a dict, a YAML/JSON file or, with `bundled:<name>`, a packaged example."""
     if isinstance(source, dict):
-        return PlantConfig.model_validate(source)
+        return source
+    if str(source).startswith("bundled:"):
+        file = resources.files("fertigung.configs").joinpath(str(source).removeprefix("bundled:"))
+        return yaml.safe_load(file.read_text(encoding="utf-8"))
     path = Path(source)
     text = path.read_text(encoding="utf-8")
-    data = json.loads(text) if path.suffix == ".json" else yaml.safe_load(text)
-    return PlantConfig.model_validate(data)
+    return json.loads(text) if path.suffix == ".json" else yaml.safe_load(text)
+
+
+def load_config(source: str | Path | dict) -> PlantConfig:
+    return PlantConfig.model_validate(read_data(source))
 
 
 def reference_config() -> PlantConfig:
-    text = resources.files("fertigung.configs").joinpath("reference.yaml").read_text(encoding="utf-8")
-    return PlantConfig.model_validate(yaml.safe_load(text))
+    return load_config("bundled:reference.yaml")
+
+
+def default_horizon(config: PlantConfig) -> int:
+    deadlines = [o.deadline for o in config.orders]
+    return int(max(deadlines) * 1.2) if deadlines else 300
