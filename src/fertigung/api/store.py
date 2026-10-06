@@ -5,6 +5,8 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
+from fastapi import HTTPException
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS plants (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, config TEXT NOT NULL,
@@ -115,3 +117,10 @@ class Store:
     def set_setting(self, key: str, value: str):
         with self._connect() as db:
             db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", [key, value])
+
+
+def get_or_404(store: Store, table: str, id: str) -> dict:
+    row = store.get(table, id)
+    if row is None:
+        raise HTTPException(404, f"{table[:-1]} {id} not found")
+    return row

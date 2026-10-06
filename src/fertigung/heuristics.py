@@ -3,7 +3,9 @@ import random
 from collections import Counter
 from functools import cache
 
+from fertigung.core.config import default_horizon
 from fertigung.core.plant import Plant
+from fertigung.core.reward import objective
 from fertigung.core.simulation import Simulation
 from fertigung.core.validation import material_costs
 
@@ -141,8 +143,8 @@ class DrumBufferRope:
     the final product.
     """
 
-    def __init__(self, rope: float = 0.5, rope_drum: bool = True, reserve: bool = True):
-        self.rope, self.rope_drum, self.reserve = rope, rope_drum, reserve
+    def __init__(self, rope: float = 0.5):
+        self.rope = rope
         self._setup = None
 
     def _plan(self, sim: Simulation):
@@ -229,11 +231,11 @@ class DrumBufferRope:
         for unit, unit_need in enumerate(need):
             for out in unit_need:
                 t = producers[out]
-                if unit > 0 and backlog[unit] > rope and (self.rope_drum or t not in drum_ops):
+                if unit > 0 and backlog[unit] > rope:
                     continue
                 tr = plant.transformations[t]
                 wip = sum(k for q, k in tr.inputs.items() if not plant.is_raw(q))
-                limit = plant.buffer_capacity - (_headroom(plant) if self.reserve and unit > 0 else 0)
+                limit = plant.buffer_capacity - (_headroom(plant) if unit > 0 else 0)
                 if not plant.is_final(out) and reserved - wip + 1 > limit:
                     continue
                 for m, position in _runners(plant)[t]:
@@ -279,7 +281,7 @@ class Lookahead:
             while (c := policy(rollout)) is not None:
                 rollout.dispatch(*c)
             rollout.advance()
-        return _objective(rollout)
+        return objective(rollout)
 
     def candidates(self, sim: Simulation) -> list[tuple[int, int] | None]:
         plant = sim.plant
@@ -305,7 +307,7 @@ class Lookahead:
         return _state(rollout), self._finish(rollout, self.base, end)
 
     def __call__(self, sim: Simulation) -> tuple[int, int] | None:
-        end = self.until or sim.end or _episode_end(sim.plant)
+        end = self.until or sim.end or default_horizon(sim.plant.config)
         if self._episode != (id(sim), sim.plant):
             self._episode = (id(sim), sim.plant)
             self.base = self._pick_base(sim, end)
@@ -324,24 +326,6 @@ class Lookahead:
 
 def _state(sim: Simulation) -> tuple:
     return (id(sim.plant), sim.time, sim._next_job, len(sim.buffer), sum(len(jobs) for jobs in sim.jobs))
-
-
-def _objective(sim: Simulation) -> float:
-    """Unshaped reward accumulated so far (same weights as Reward without shaping)."""
-    c, ledger = sim.plant.config.reward, sim.ledger
-    return c.scale * (
-        c.revenue * ledger.revenue
-        - c.material_cost * ledger.material_cost
-        - c.holding_cost * ledger.holding_part_ticks
-        - c.lateness * ledger.late_unit_ticks
-        - c.idle * ledger.idle_slot_ticks
-    )
-
-
-@cache
-def _episode_end(plant: Plant) -> int:
-    deadlines = [o.deadline for o in plant.config.orders]
-    return int(max(deadlines) * 1.2) if deadlines else 300
 
 
 def _in_flight(sim: Simulation) -> Counter:

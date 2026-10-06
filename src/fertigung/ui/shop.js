@@ -78,7 +78,7 @@ function floorSvg(config, selected) {
 }
 
 document.addEventListener("alpine:init", () => {
-  Alpine.data("shop", () => ({
+  Alpine.data("shop", () => component(configEditor("/shops", "shop"), {
     tabs: [
       { id: "layout", label: "Layout" },
       { id: "operations", label: "Parts & operations" },
@@ -89,15 +89,7 @@ document.addEventListener("alpine:init", () => {
     ],
     tab: location.hash.slice(1) || "layout",
     days: DAYS,
-    toast: "",
-    busy: false,
-    shops: [],
-    shopId: "",
-    currentShopId: "",
     config: normalize({ name: "", layout: { stores: [] }, part_types: [], transformations: [], machine_types: [], machines: [], transport: { speed: 1, vehicles: [] }, staff: { shifts: [] }, logistics: { pickups: [] } }),
-    saved: "",
-    analysis: null,
-    issues: [],
     profiles: {},
     weightLabels: {
       revenue: "per unit of revenue",
@@ -119,8 +111,8 @@ document.addEventListener("alpine:init", () => {
       window.addEventListener("hashchange", () => (this.tab = location.hash.slice(1) || "layout"));
       try {
         this.profiles = await api("GET", "/shop-profiles");
-        this.shops = await api("GET", "/shops");
-        if (this.shops.length) this.selectShop(this.shops[0].id);
+        await this.loadRecords();
+        if (this.records.length) this.selectRecord(this.records[0].id);
       } catch (e) {
         this.notify(e);
       }
@@ -129,44 +121,6 @@ document.addEventListener("alpine:init", () => {
       this.$watch("selected", () => this.drawFloor());
       this.$watch("tab", (tab) => tab === "layout" && this.$nextTick(() => this.drawFloor()));
       this.bindFloor();
-    },
-
-    notify(message) {
-      this.toast = message instanceof Error ? message.message : message;
-      setTimeout(() => (this.toast = ""), 6000);
-    },
-
-    fmt(v) {
-      if (v === null || v === undefined) return "–";
-      if (typeof v !== "number") return v;
-      return Number.isInteger(v) ? v.toLocaleString() : v.toLocaleString(undefined, { maximumFractionDigits: 1 });
-    },
-
-    splitList(text) {
-      return text.split(",").map((s) => s.trim()).filter(Boolean);
-    },
-
-    get dirty() {
-      return JSON.stringify(this.config) !== this.saved;
-    },
-
-    get errorCount() {
-      return this.issues.filter((i) => i.level === "error").length;
-    },
-
-    get partNames() {
-      return this.config.part_types.map((p) => p.name).filter(Boolean);
-    },
-
-    get finalProducts() {
-      return this.analysis?.final || this.partNames;
-    },
-
-    kindOf(name) {
-      if (!this.analysis) return "";
-      if (this.analysis.raw.includes(name)) return "raw";
-      if (this.analysis.final.includes(name)) return "final";
-      return "intermediate";
     },
 
     weekTime(minute) {
@@ -193,16 +147,6 @@ document.addEventListener("alpine:init", () => {
 
     // ----- shops
 
-    selectShop(id) {
-      const shop = this.shops.find((s) => s.id === id);
-      if (!shop || (this.dirty && this.saved && !confirm("Discard unsaved changes?"))) {
-        this.$nextTick(() => (this.shopId = this.currentShopId));
-        return;
-      }
-      this.shopId = this.currentShopId = id;
-      this.setConfig(shop.config);
-    },
-
     setConfig(config) {
       this.config = normalize(config);
       this.saved = JSON.stringify(this.config);
@@ -210,64 +154,6 @@ document.addEventListener("alpine:init", () => {
       this.result = null;
       this.validate();
       this.$nextTick(() => this.drawFloor());
-    },
-
-    async save() {
-      try {
-        const shop = this.shopId ? await api("PUT", `/shops/${this.shopId}`, this.config) : await api("POST", "/shops", this.config);
-        this.shops = await api("GET", "/shops");
-        this.shopId = this.currentShopId = shop.id;
-        this.saved = JSON.stringify(this.config);
-        this.notify(`Saved ${shop.name}.`);
-      } catch (e) {
-        this.notify(e);
-      }
-    },
-
-    duplicate() {
-      const copy = clone(this.config);
-      copy.name = `${copy.name} copy`;
-      this.shopId = this.currentShopId = "";
-      this.config = copy;
-      this.saved = "";
-    },
-
-    async remove() {
-      if (!confirm(`Delete shop ${this.config.name}?`)) return;
-      try {
-        await api("DELETE", `/shops/${this.shopId}`);
-        this.saved = "";
-        this.shops = await api("GET", "/shops");
-        if (this.shops.length) this.selectShop(this.shops[0].id);
-      } catch (e) {
-        this.notify(e);
-      }
-    },
-
-    exportJson() {
-      download(`${this.config.name || "shop"}.json`, new Blob([JSON.stringify(this.config, null, 2)], { type: "application/json" }));
-    },
-
-    async importJson(event) {
-      const file = event.target.files[0];
-      event.target.value = "";
-      if (!file) return;
-      try {
-        this.setConfig(JSON.parse(await file.text()));
-        this.shopId = this.currentShopId = "";
-        this.saved = "";
-      } catch (e) {
-        this.notify(`Import failed: ${e.message}`);
-      }
-    },
-
-    async validate() {
-      try {
-        this.analysis = await api("POST", "/shops/validate", this.config);
-        this.issues = this.analysis.issues;
-      } catch (e) {
-        this.issues = e.message.split("\n").map((message) => ({ level: "error", message }));
-      }
     },
 
     // ----- layout

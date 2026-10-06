@@ -4,14 +4,14 @@ stores; automatic transports; a staff pool per shift; truck pickups; selectable 
 Time is measured in minutes from `start`.
 """
 
-import json
 import re
 from collections import Counter
 from pathlib import Path
 from typing import Literal
 
-import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from fertigung.core.config import read_data
 
 Day = Literal["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 WEEKDAYS: list[Day] = ["mon", "tue", "wed", "thu", "fri"]
@@ -295,9 +295,8 @@ class ShopConfig(_Model):
 
 
 def load_shop(source: str | Path | dict) -> ShopConfig:
-    if isinstance(source, dict):
-        return ShopConfig.model_validate(source)
-    path = Path(source)
-    text = path.read_text(encoding="utf-8")
-    data = json.loads(text) if path.suffix == ".json" else yaml.safe_load(text)
-    return ShopConfig.model_validate(data)
+    return ShopConfig.model_validate(read_data(source))
+
+
+def workshop_config() -> ShopConfig:
+    return load_shop("bundled:workshop.yaml")

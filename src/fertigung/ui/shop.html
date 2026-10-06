@@ -16,9 +16,9 @@
   <h1>Fertigung</h1>
   <a class="mode" href="index.html">← Simple model</a>
   <label class="plant-select">Shop
-    <select x-model="shopId" @change="selectShop(shopId)">
-      <template x-for="s in shops" :key="s.id"><option :value="s.id" x-text="s.name"></option></template>
-      <option value="" x-show="!shopId">(unsaved)</option>
+    <select x-model="recordId" @change="selectRecord(recordId)">
+      <template x-for="s in records" :key="s.id"><option :value="s.id" x-text="s.name"></option></template>
+      <option value="" x-show="!recordId">(unsaved)</option>
     </select>
   </label>
   <span class="dirty" x-show="dirty">unsaved changes</span>
@@ -33,11 +33,11 @@
 
 <main>
   <div class="toolbar" x-show="tab !== 'simulation'">
-    <button class="primary" @click="save()" :disabled="!dirty && shopId">Save</button>
+    <button class="primary" @click="save()" :disabled="!dirty && recordId">Save</button>
     <button @click="duplicate()">Duplicate</button>
     <button @click="exportJson()">Export JSON</button>
     <label class="button">Import JSON<input type="file" accept=".json" hidden @change="importJson($event)"></label>
-    <button class="danger" @click="remove()" :disabled="!shopId">Delete</button>
+    <button class="danger" @click="remove()" :disabled="!recordId">Delete</button>
     <span class="issue-count" :class="errorCount ? 'error' : 'ok'"
           x-text="errorCount ? `${errorCount} error(s), ${issues.length - errorCount} warning(s)` : (issues.length ? `${issues.length} warning(s)` : 'valid')"></span>
   </div>

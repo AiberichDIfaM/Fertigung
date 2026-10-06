@@ -7,6 +7,18 @@ from fertigung.core.validation import material_costs
 COMPONENTS = ("revenue", "material_cost", "holding_cost", "lateness", "idle", "shaping")
 
 
+def objective(sim: Simulation) -> float:
+    """Unshaped reward accumulated so far."""
+    c, ledger = sim.plant.config.reward, sim.ledger
+    return c.scale * (
+        c.revenue * ledger.revenue
+        - c.material_cost * ledger.material_cost
+        - c.holding_cost * ledger.holding_part_ticks
+        - c.lateness * ledger.late_unit_ticks
+        - c.idle * ledger.idle_slot_ticks
+    )
+
+
 class Reward:
     """Weighted reward from changes in the simulation ledger since the previous call.
 
@@ -50,7 +62,6 @@ class Reward:
         self.totals.update(parts)
         reward = sum(parts.values())
         self.total += reward
-        self.last_components = parts
         return reward
 
     @staticmethod

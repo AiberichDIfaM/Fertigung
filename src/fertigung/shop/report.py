@@ -1,21 +1,13 @@
 """Run a shop simulation and turn it into a JSON-friendly report (KPIs, orders, Gantt data, trips, events)."""
 
 from dataclasses import asdict
-from importlib import resources
 
-import yaml
-
-from fertigung.shop.config import ShopConfig, load_shop
+from fertigung.shop.config import ShopConfig
 from fertigung.shop.heuristics import ShopPull
 from fertigung.shop.model import ShopModel
 from fertigung.shop.simulation import ShopSimulation
 
 POLICIES = {"pull": ShopPull}
-
-
-def workshop_config() -> ShopConfig:
-    text = resources.files("fertigung.configs").joinpath("workshop.yaml").read_text(encoding="utf-8")
-    return load_shop(yaml.safe_load(text))
 
 
 def default_minutes(config: ShopConfig) -> int:

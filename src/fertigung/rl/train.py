@@ -12,10 +12,10 @@ from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.logger import configure
 
-from fertigung.core.config import PlantConfig
+from fertigung.core.config import PlantConfig, default_horizon
 from fertigung.evaluation import evaluate
 from fertigung.generator import random_plant
-from fertigung.rl.env import JobShopEnv, default_horizon
+from fertigung.rl.env import JobShopEnv
 from fertigung.rl.model import MODEL_FILE, ModelPolicy, TrainedModel, make_observer, model_path, write_meta
 from fertigung.rl.policy import CandidatePolicy
 from fertigung.rl.pretrain import behavior_cloning, expert_rollouts

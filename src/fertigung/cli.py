@@ -3,16 +3,10 @@ import json
 import os
 import sys
 
-from fertigung.core.config import load_config, reference_config
+from fertigung.core.config import default_horizon, load_config, reference_config
 from fertigung.core.validation import validate
 from fertigung.evaluation import compare, format_table, run_episode
 from fertigung.heuristics import POLICIES, make_policy
-
-
-def _default_horizon(config):
-    from fertigung.rl.env import default_horizon
-
-    return default_horizon(config)
 
 
 def _load(args):
@@ -23,7 +17,7 @@ def _load(args):
 
         trained = TrainedModel(args.model)
     config = load_config(args.config) if args.config else trained.config if trained else reference_config()
-    ticks = args.ticks or (trained.horizon_for(config) if trained else _default_horizon(config))
+    ticks = args.ticks or (trained.horizon_for(config) if trained else default_horizon(config))
     return config, trained, ticks
 
 

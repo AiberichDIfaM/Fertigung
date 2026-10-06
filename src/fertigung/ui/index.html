@@ -17,11 +17,11 @@
   <h1>Fertigung</h1>
   <a class="mode" href="shop.html">Shop floor model →</a>
   <label class="plant-select">Plant
-    <select x-model="plantId" @change="selectPlant(plantId)">
-      <template x-for="p in plants" :key="p.id">
+    <select x-model="recordId" @change="selectRecord(recordId)">
+      <template x-for="p in records" :key="p.id">
         <option :value="p.id" x-text="p.name"></option>
       </template>
-      <option value="" x-show="!plantId">(unsaved)</option>
+      <option value="" x-show="!recordId">(unsaved)</option>
     </select>
   </label>
   <span class="dirty" x-show="dirty">unsaved changes</span>
@@ -39,11 +39,11 @@
   <section x-show="tab === 'plant'" class="columns">
     <div class="editor">
       <div class="toolbar">
-        <button class="primary" @click="savePlant()" :disabled="!dirty && plantId">Save</button>
-        <button @click="duplicatePlant()">Duplicate</button>
-        <button @click="exportPlant()">Export JSON</button>
-        <label class="button">Import JSON<input type="file" accept=".json" hidden @change="importPlant($event)"></label>
-        <button class="danger" @click="deletePlant()" :disabled="!plantId">Delete</button>
+        <button class="primary" @click="save()" :disabled="!dirty && recordId">Save</button>
+        <button @click="duplicate()">Duplicate</button>
+        <button @click="exportJson()">Export JSON</button>
+        <label class="button">Import JSON<input type="file" accept=".json" hidden @change="importJson($event)"></label>
+        <button class="danger" @click="remove()" :disabled="!recordId">Delete</button>
       </div>
 
       <div class="grid2">
@@ -141,7 +141,7 @@
   <!-- Orders & reward -->
   <section x-show="tab === 'orders'" class="columns">
     <div>
-      <div class="toolbar"><button class="primary" @click="savePlant()" :disabled="!dirty && plantId">Save</button></div>
+      <div class="toolbar"><button class="primary" @click="save()" :disabled="!dirty && recordId">Save</button></div>
       <h3>Orders</h3>
       <table>
         <thead><tr><th>Product</th><th>Quantity</th><th>Deadline (tick)</th><th>Price (empty: list price)</th><th></th></tr></thead>
@@ -180,7 +180,7 @@
   <section x-show="tab === 'training'" class="columns">
     <div>
       <h3>New training job</h3>
-      <p class="hint" x-show="dirty || !plantId">Save the plant first; jobs train on the saved version.</p>
+      <p class="hint" x-show="dirty || !recordId">Save the plant first; jobs train on the saved version.</p>
       <div class="grid2">
         <template x-for="key in trainingFields" :key="key">
           <label class="field">
@@ -206,7 +206,7 @@
         </select>
         <small>Start from a transferable model instead of imitating a heuristic.</small>
       </label>
-      <button class="primary" @click="startTraining()" :disabled="dirty || !plantId">Start training</button>
+      <button class="primary" @click="startTraining()" :disabled="dirty || !recordId">Start training</button>
 
       <h3>Jobs</h3>
       <table class="clickable">

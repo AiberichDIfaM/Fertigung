@@ -6,10 +6,10 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from fertigung.api.store import Store, now
-from fertigung.shop.config import PROFILES, ShopConfig
+from fertigung.api.store import Store, get_or_404, now
+from fertigung.shop.config import PROFILES, ShopConfig, workshop_config
 from fertigung.shop.model import ShopModel
-from fertigung.shop.report import POLICIES, simulate, workshop_config
+from fertigung.shop.report import POLICIES, simulate
 from fertigung.shop.validation import validate_shop
 
 
@@ -52,12 +52,6 @@ def analyze_shop(config: ShopConfig) -> dict:
 def shop_router(store: Store, dependencies) -> APIRouter:
     router = APIRouter(dependencies=dependencies)
 
-    def get_or_404(table: str, id: str) -> dict:
-        row = store.get(table, id)
-        if row is None:
-            raise HTTPException(404, f"{table[:-1]} {id} not found")
-        return row
-
     @router.get("/shops")
     def list_shops():
         return store.list("shops")
@@ -74,11 +68,11 @@ def shop_router(store: Store, dependencies) -> APIRouter:
 
     @router.get("/shops/{shop_id}")
     def get_shop(shop_id: str):
-        return get_or_404("shops", shop_id)
+        return get_or_404(store, "shops", shop_id)
 
     @router.put("/shops/{shop_id}")
     def update_shop(shop_id: str, config: ShopConfig):
-        get_or_404("shops", shop_id)
+        get_or_404(store, "shops", shop_id)
         return store.update(
             "shops", shop_id, name=config.name, config=config.model_dump(by_alias=True), updated_at=now()
         )
@@ -90,7 +84,7 @@ def shop_router(store: Store, dependencies) -> APIRouter:
 
     @router.post("/shops/{shop_id}/validate")
     def validate_shop_by_id(shop_id: str):
-        return analyze_shop(ShopConfig.model_validate(get_or_404("shops", shop_id)["config"]))
+        return analyze_shop(ShopConfig.model_validate(get_or_404(store, "shops", shop_id)["config"]))
 
     @router.get("/shop-profiles")
     def shop_profiles():
@@ -105,7 +99,7 @@ def shop_router(store: Store, dependencies) -> APIRouter:
         if body.config is not None:
             config = body.config
         elif body.shop_id:
-            config = ShopConfig.model_validate(get_or_404("shops", body.shop_id)["config"])
+            config = ShopConfig.model_validate(get_or_404(store, "shops", body.shop_id)["config"])
         else:
             raise HTTPException(422, "pass shop_id or config")
         if any(i.level == "error" for i in validate_shop(config)):
@@ -116,6 +110,6 @@ def shop_router(store: Store, dependencies) -> APIRouter:
 
     @router.get("/shop-simulations/{simulation_id}")
     def get_simulation(simulation_id: str):
-        return get_or_404("shop_simulations", simulation_id)
+        return get_or_404(store, "shop_simulations", simulation_id)
 
     return router
