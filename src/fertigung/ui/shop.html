@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fertigung – Shop floor</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%232f6fdf'/><path d='M3 12h10M4 12V7l3 2V7l3 2V4h2v8' stroke='white' fill='none' stroke-width='1.3'/></svg>">
+  <link rel="stylesheet" href="style.css">
+  <script src="vendor/chart.umd.min.js"></script>
+  <script src="common.js"></script>
+  <script src="shop.js"></script>
+  <script defer src="vendor/alpine.min.js"></script>
+</head>
+<body x-data="shop" x-cloak>
+<header>
+  <h1>Fertigung</h1>
+  <a class="mode" href="index.html">← Simple model</a>
+  <label class="plant-select">Shop
+    <select x-model="shopId" @change="selectShop(shopId)">
+      <template x-for="s in shops" :key="s.id"><option :value="s.id" x-text="s.name"></option></template>
+      <option value="" x-show="!shopId">(unsaved)</option>
+    </select>
+  </label>
+  <span class="dirty" x-show="dirty">unsaved changes</span>
+  <nav>
+    <template x-for="t in tabs" :key="t.id">
+      <a :href="'#' + t.id" :class="{active: tab === t.id}" x-text="t.label"></a>
+    </template>
+  </nav>
+</header>
+
+<div class="toast" x-show="toast" x-text="toast" @click="toast = ''" x-transition></div>
+
+<main>
+  <div class="toolbar" x-show="tab !== 'simulation'">
+    <button class="primary" @click="save()" :disabled="!dirty && shopId">Save</button>
+    <button @click="duplicate()">Duplicate</button>
+    <button @click="exportJson()">Export JSON</button>
+    <label class="button">Import JSON<input type="file" accept=".json" hidden @change="importJson($event)"></label>
+    <button class="danger" @click="remove()" :disabled="!shopId">Delete</button>
+    <span class="issue-count" :class="errorCount ? 'error' : 'ok'"
+          x-text="errorCount ? `${errorCount} error(s), ${issues.length - errorCount} warning(s)` : (issues.length ? `${issues.length} warning(s)` : 'valid')"></span>
+  </div>
+
+  <!-- Layout -->
+  <section x-show="tab === 'layout'" class="columns">
+    <div>
+      <div class="toolbar">
+        <label>Name <input x-model="config.name"></label>
+        <label>Distance
+          <select x-model="config.layout.distance"><option>manhattan</option><option>euclidean</option></select>
+        </label>
+        <button @click="addMachine()">Add machine</button>
+        <button @click="addStore()">Add store</button>
+      </div>
+      <p class="hint">Drag machines and stores to move them (positions in metres). Click to edit.</p>
+      <div id="floor" class="floor"></div>
+    </div>
+    <aside>
+      <template x-if="selected && selected.kind === 'machine' && config.machines[selected.index]">
+        <div>
+          <h3>Machine</h3>
+          <div class="grid2">
+            <label class="field"><span>name</span><input x-model="config.machines[selected.index].name"></label>
+            <label class="field"><span>type</span>
+              <select x-model="config.machines[selected.index].type">
+                <template x-for="mt in config.machine_types" :key="mt.name"><option :value="mt.name" x-text="mt.name" :selected="mt.name === config.machines[selected.index].type"></option></template>
+              </select>
+            </label>
+            <label class="field"><span>x</span><input type="number" step="1" :value="config.machines[selected.index].position[0]" @change="config.machines[selected.index].position = [Number($event.target.value), config.machines[selected.index].position[1]]"></label>
+            <label class="field"><span>y</span><input type="number" step="1" :value="config.machines[selected.index].position[1]" @change="config.machines[selected.index].position = [config.machines[selected.index].position[0], Number($event.target.value)]"></label>
+            <label class="field"><span>input buffer</span><input type="number" min="1" x-model.number="config.machines[selected.index].input_buffer"></label>
+            <label class="field"><span>output buffer</span><input type="number" min="1" x-model.number="config.machines[selected.index].output_buffer"></label>
+          </div>
+          <button class="danger" @click="config.machines.splice(selected.index, 1); selected = null">Remove machine</button>
+        </div>
+      </template>
+      <template x-if="selected && selected.kind === 'store' && config.layout.stores[selected.index]">
+        <div>
+          <h3>Store</h3>
+          <div class="grid2">
+            <label class="field"><span>name</span><input x-model="config.layout.stores[selected.index].name"></label>
+            <label class="field"><span>kind</span>
+              <select x-model="config.layout.stores[selected.index].kind"><option>raw</option><option>intermediate</option><option>finished</option></select>
+            </label>
+            <label class="field"><span>x</span><input type="number" step="1" :value="config.layout.stores[selected.index].position[0]" @change="config.layout.stores[selected.index].position = [Number($event.target.value), config.layout.stores[selected.index].position[1]]"></label>
+            <label class="field"><span>y</span><input type="number" step="1" :value="config.layout.stores[selected.index].position[1]" @change="config.layout.stores[selected.index].position = [config.layout.stores[selected.index].position[0], Number($event.target.value)]"></label>
+            <label class="field"><span>capacity (empty: unlimited)</span><input type="number" min="1" :value="config.layout.stores[selected.index].capacity ?? ''" @change="config.layout.stores[selected.index].capacity = $event.target.value === '' ? null : Number($event.target.value)"></label>
+          </div>
+          <button class="danger" @click="config.layout.stores.splice(selected.index, 1); selected = null">Remove store</button>
+        </div>
+      </template>
+      <p class="hint" x-show="!selected">Select a machine or store in the plan.</p>
+      <h3>Validation</h3>
+      <p class="ok" x-show="issues.length === 0">No issues.</p>
+      <ul class="issues"><template x-for="issue in issues"><li :class="issue.level" x-text="issue.message"></li></template></ul>
+    </aside>
+  </section>
+
+  <!-- Parts and operations -->
+  <section x-show="tab === 'operations'">
+    <h3>Part types</h3>
+    <table>
+      <thead><tr><th>Name</th><th>Kind</th><th>Cost</th><th>Price</th><th></th></tr></thead>
+      <tbody>
+      <template x-for="(p, i) in config.part_types" :key="i">
+        <tr>
+          <td><input x-model="p.name"></td>
+          <td><span class="kind" :class="kindOf(p.name)" x-text="kindOf(p.name)"></span></td>
+          <td><input type="number" min="0" step="any" x-model.number="p.cost"></td>
+          <td><input type="number" min="0" step="any" x-model.number="p.price"></td>
+          <td><button class="icon" @click="config.part_types.splice(i, 1)">×</button></td>
+        </tr>
+      </template>
+      </tbody>
+    </table>
+    <button @click="config.part_types.push({name: '', cost: 0, price: 0})">Add part type</button>
+
+    <h3>Operations</h3>
+    <table>
+      <thead><tr><th>Name</th><th>Inputs (comma separated)</th><th>Output</th><th>Minutes</th><th>Setup family</th><th>Interruptible</th><th></th></tr></thead>
+      <tbody>
+      <template x-for="(t, i) in config.transformations" :key="i">
+        <tr>
+          <td><input x-model="t.name"></td>
+          <td><input :value="t.inputs.join(', ')" @change="t.inputs = splitList($event.target.value)" list="part-names"></td>
+          <td><select x-model="t.output"><template x-for="n in partNames" :key="n"><option :value="n" x-text="n" :selected="n === t.output"></option></template></select></td>
+          <td><input type="number" min="1" x-model.number="t.duration"></td>
+          <td><input :value="t.setup_family ?? ''" @change="t.setup_family = $event.target.value.trim() || null" placeholder="none"></td>
+          <td><input type="checkbox" class="check" x-model="t.interruptible"></td>
+          <td><button class="icon" @click="config.transformations.splice(i, 1)">×</button></td>
+        </tr>
+      </template>
+      </tbody>
+    </table>
+    <button @click="config.transformations.push({name: '', inputs: [], output: partNames[0] || '', duration: 1, setup_family: null, interruptible: true})">Add operation</button>
+    <datalist id="part-names"><template x-for="n in partNames" :key="n"><option :value="n"></option></template></datalist>
+  </section>
+
+  <!-- Machines -->
+  <section x-show="tab === 'machines'">
+    <h3>Machine types</h3>
+    <template x-for="(mt, i) in config.machine_types" :key="i">
+      <div class="card machine-type">
+        <div class="grid2">
+          <label class="field"><span>name</span><input x-model="mt.name"></label>
+          <label class="field"><span>operations (comma separated)</span><input :value="mt.transformations.join(', ')" @change="mt.transformations = splitList($event.target.value)"></label>
+          <label class="field"><span>slots</span><input type="number" min="1" x-model.number="mt.slots"></label>
+          <label class="field"><span>operators per job</span><input type="number" min="0" x-model.number="mt.operators"></label>
+          <label class="field"><span>setup operators</span><input type="number" min="0" x-model.number="mt.setup.operators"></label>
+          <label class="field"><span>first setup (min)</span><input type="number" min="0" x-model.number="mt.setup.initial"></label>
+          <label class="field"><span>family change (min)</span><input type="number" min="0" x-model.number="mt.setup.default"></label>
+        </div>
+        <table class="compact" x-show="mt.setup.times.length">
+          <thead><tr><th>Setup exception: from</th><th>to</th><th>minutes</th><th></th></tr></thead>
+          <tbody>
+          <template x-for="(st, k) in mt.setup.times" :key="k">
+            <tr>
+              <td><select x-model="st.from"><template x-for="f in analysis?.families?.[mt.name] || []" :key="f"><option :value="f" x-text="f" :selected="f === st.from"></option></template></select></td>
+              <td><select x-model="st.to"><template x-for="f in analysis?.families?.[mt.name] || []" :key="f"><option :value="f" x-text="f" :selected="f === st.to"></option></template></select></td>
+              <td><input type="number" min="0" x-model.number="st.minutes"></td>
+              <td><button class="icon" @click="mt.setup.times.splice(k, 1)">×</button></td>
+            </tr>
+          </template>
+          </tbody>
+        </table>
+        <div class="toolbar">
+          <button x-show="(analysis?.families?.[mt.name] || []).length > 1" @click="addSetupTime(mt)">Add setup exception</button>
+          <button class="danger" @click="config.machine_types.splice(i, 1)">Remove type</button>
+        </div>
+      </div>
+    </template>
+    <button @click="config.machine_types.push({name: 'new-type', transformations: [], slots: 1, operators: 1, setup: {operators: 1, initial: 0, default: 0, times: []}})">Add machine type</button>
+
+    <h3>Machines</h3>
+    <table>
+      <thead><tr><th>Name</th><th>Type</th><th>x</th><th>y</th><th>Input buffer</th><th>Output buffer</th><th></th></tr></thead>
+      <tbody>
+      <template x-for="(m, i) in config.machines" :key="i">
+        <tr>
+          <td><input x-model="m.name"></td>
+          <td><select x-model="m.type"><template x-for="mt in config.machine_types" :key="mt.name"><option :value="mt.name" x-text="mt.name" :selected="mt.name === m.type"></option></template></select></td>
+          <td><input type="number" :value="m.position[0]" @change="m.position = [Number($event.target.value), m.position[1]]"></td>
+          <td><input type="number" :value="m.position[1]" @change="m.position = [m.position[0], Number($event.target.value)]"></td>
+          <td><input type="number" min="1" x-model.number="m.input_buffer"></td>
+          <td><input type="number" min="1" x-model.number="m.output_buffer"></td>
+          <td><button class="icon" @click="config.machines.splice(i, 1)">×</button></td>
+        </tr>
+      </template>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Logistics and staff -->
+  <section x-show="tab === 'logistics'" class="columns">
+    <div>
+      <h3>Transport</h3>
+      <div class="grid2">
+        <label class="field"><span>speed (m per minute)</span><input type="number" min="0.1" step="any" x-model.number="config.transport.speed"></label>
+        <label class="field"><span>handling per trip (min)</span><input type="number" min="0" x-model.number="config.transport.handling"></label>
+      </div>
+      <table>
+        <thead><tr><th>Vehicle</th><th>Count</th><th>Parts per trip</th><th></th></tr></thead>
+        <tbody>
+        <template x-for="(v, i) in config.transport.vehicles" :key="i">
+          <tr>
+            <td><input x-model="v.name"></td>
+            <td><input type="number" min="1" x-model.number="v.count"></td>
+            <td><input type="number" min="1" x-model.number="v.capacity"></td>
+            <td><button class="icon" @click="config.transport.vehicles.splice(i, 1)">×</button></td>
+          </tr>
+        </template>
+        </tbody>
+      </table>
+      <button @click="config.transport.vehicles.push({name: 'vehicle', count: 1, capacity: 1})">Add vehicle</button>
+
+      <h3>Shifts</h3>
+      <table>
+        <thead><tr><th>Days</th><th>Start</th><th>End</th><th>Workers</th><th></th></tr></thead>
+        <tbody>
+        <template x-for="(s, i) in config.staff.shifts" :key="i">
+          <tr>
+            <td class="days"><template x-for="d in days" :key="d"><label class="day"><input type="checkbox" :checked="s.days.includes(d)" @change="toggleDay(s, d)"><span x-text="d"></span></label></template></td>
+            <td><input type="time" x-model="s.start"></td>
+            <td><input type="time" x-model="s.end"></td>
+            <td><input type="number" min="0" x-model.number="s.workers"></td>
+            <td><button class="icon" @click="config.staff.shifts.splice(i, 1)">×</button></td>
+          </tr>
+        </template>
+        </tbody>
+      </table>
+      <button @click="config.staff.shifts.push({days: ['mon', 'tue', 'wed', 'thu', 'fri'], start: '06:00', end: '14:00', workers: 1})">Add shift</button>
+    </div>
+    <aside>
+      <h3>Truck pickups</h3>
+      <table>
+        <thead><tr><th>Days</th><th>Time</th><th></th></tr></thead>
+        <tbody>
+        <template x-for="(p, i) in config.logistics.pickups" :key="i">
+          <tr>
+            <td class="days"><template x-for="d in days" :key="d"><label class="day"><input type="checkbox" :checked="p.days.includes(d)" @change="toggleDay(p, d)"><span x-text="d"></span></label></template></td>
+            <td><input type="time" x-model="p.time"></td>
+            <td><button class="icon" @click="config.logistics.pickups.splice(i, 1)">×</button></td>
+          </tr>
+        </template>
+        </tbody>
+      </table>
+      <button @click="config.logistics.pickups.push({days: ['mon', 'tue', 'wed', 'thu', 'fri'], time: '15:00'})">Add pickup</button>
+      <label class="field"><span>partial shipments</span><input type="checkbox" class="check" x-model="config.logistics.partial_shipments"></label>
+      <h3>Planning start (minute 0)</h3>
+      <div class="grid2">
+        <label class="field"><span>day</span><select x-model="config.start.day"><template x-for="d in days" :key="d"><option :value="d" x-text="d" :selected="d === config.start.day"></option></template></select></label>
+        <label class="field"><span>time</span><input type="time" x-model="config.start.time"></label>
+      </div>
+    </aside>
+  </section>
+
+  <!-- Orders and objective -->
+  <section x-show="tab === 'orders'" class="columns">
+    <div>
+      <h3>Orders</h3>
+      <table>
+        <thead><tr><th>Product</th><th>Qty</th><th>Release</th><th>Deadline (truck)</th><th>Priority</th><th>Price</th><th></th></tr></thead>
+        <tbody>
+        <template x-for="(o, i) in config.orders" :key="i">
+          <tr>
+            <td><select x-model="o.product"><template x-for="n in finalProducts" :key="n"><option :value="n" x-text="n" :selected="n === o.product"></option></template></select></td>
+            <td><input type="number" min="1" x-model.number="o.quantity"></td>
+            <td class="when">
+              <input type="number" min="1" title="week" :value="weekTime(o.release).week" @change="setWeekTime(o, 'release', {week: Number($event.target.value)})">
+              <select :value="weekTime(o.release).day" @change="setWeekTime(o, 'release', {day: $event.target.value})"><template x-for="d in days" :key="d"><option :value="d" x-text="d" :selected="d === weekTime(o.release).day"></option></template></select>
+              <input type="time" :value="weekTime(o.release).time" @change="setWeekTime(o, 'release', {time: $event.target.value})">
+            </td>
+            <td class="when">
+              <input type="number" min="1" title="week" :value="weekTime(o.deadline).week" @change="setWeekTime(o, 'deadline', {week: Number($event.target.value)})">
+              <select :value="weekTime(o.deadline).day" @change="setWeekTime(o, 'deadline', {day: $event.target.value})"><template x-for="d in days" :key="d"><option :value="d" x-text="d" :selected="d === weekTime(o.deadline).day"></option></template></select>
+              <input type="time" :value="weekTime(o.deadline).time" @change="setWeekTime(o, 'deadline', {time: $event.target.value})">
+            </td>
+            <td><input type="number" min="1" x-model.number="o.priority"></td>
+            <td><input type="number" min="0" step="any" :value="o.price ?? ''" placeholder="list" @change="o.price = $event.target.value === '' ? null : Number($event.target.value)"></td>
+            <td><button class="icon" @click="config.orders.splice(i, 1)">×</button></td>
+          </tr>
+        </template>
+        </tbody>
+      </table>
+      <button @click="config.orders.push({product: finalProducts[0] || '', quantity: 1, release: 0, deadline: 1980, priority: 1, price: null})">Add order</button>
+      <p class="hint">Week 1 starts at the planning start; deadlines are when the truck must have collected the order.</p>
+    </div>
+    <aside>
+      <h3>Objective</h3>
+      <label class="field"><span>profile</span>
+        <select x-model="config.objective.profile"><template x-for="(w, name) in profiles" :key="name"><option :value="name" x-text="name" :selected="name === config.objective.profile"></option></template></select>
+      </label>
+      <template x-for="(label, key) in weightLabels" :key="key">
+        <label class="field">
+          <span x-text="key"></span>
+          <input type="number" min="0" step="any" :placeholder="profiles[config.objective.profile]?.[key]"
+                 :value="config.objective.weights[key] ?? ''" @change="config.objective.weights[key] = $event.target.value === '' ? null : Number($event.target.value)">
+          <small x-text="label + ' (empty: profile value)'"></small>
+        </label>
+      </template>
+    </aside>
+  </section>
+
+  <!-- Simulation -->
+  <section x-show="tab === 'simulation'">
+    <div class="toolbar">
+      <label>Policy <select x-model="sim.policy"><option value="pull">pull (demand-driven)</option></select></label>
+      <label>Queue limit <input type="number" min="1" x-model.number="sim.queue_limit"></label>
+      <label>Minutes <input type="number" min="1" placeholder="auto" x-model.number="sim.minutes"></label>
+      <button class="primary" @click="run()" :disabled="busy || errorCount > 0">Run</button>
+      <span class="hint" x-show="busy">Simulating…</span>
+      <span class="hint" x-show="dirty">Runs the current, unsaved configuration.</span>
+    </div>
+    <template x-if="result">
+      <div>
+        <div class="cards">
+          <template x-for="k in kpiKeys">
+            <div class="card"><small x-text="k"></small><strong x-text="fmt(result.kpis[k])"></strong></div>
+          </template>
+        </div>
+        <div class="columns">
+          <div>
+            <h3>Orders</h3>
+            <table class="numbers">
+              <thead><tr><th>Product</th><th>Qty</th><th>Deadline</th><th>Shipped</th><th></th></tr></thead>
+              <tbody>
+              <template x-for="o in result.orders">
+                <tr :class="{late: !o.on_time}">
+                  <td x-text="o.product"></td><td x-text="o.quantity"></td>
+                  <td x-text="formatMinute(o.deadline)"></td>
+                  <td x-text="o.completed_at === null ? `${o.delivered} of ${o.quantity}` : formatMinute(o.completed_at)"></td>
+                  <td><span class="status" :class="o.on_time ? 'completed' : 'failed'" x-text="o.on_time ? 'on time' : 'late'"></span></td>
+                </tr>
+              </template>
+              </tbody>
+            </table>
+          </div>
+          <aside>
+            <h3>Utilisation (of staffed time)</h3>
+            <div class="chart small"><canvas id="utilisation"></canvas></div>
+          </aside>
+        </div>
+        <h3>Machines</h3>
+        <p class="hint">One row per slot. Orange: setup, coloured: processing (by output), red: finished but blocked by a full output buffer. Grey bands: no staff.</p>
+        <div class="gantt" :style="`height: ${machineHeight}px`"><canvas id="machine-gantt"></canvas></div>
+        <h3>Transport</h3>
+        <div class="gantt" :style="`height: ${vehicleHeight}px`"><canvas id="vehicle-gantt"></canvas></div>
+        <details>
+          <summary>Event log (<span x-text="result.events.length"></span> events)</summary>
+          <table class="numbers">
+            <thead><tr><th>Time</th><th>Event</th><th>Machine</th><th>Job</th><th>Detail</th></tr></thead>
+            <tbody>
+            <template x-for="e in result.events.slice(0, 1000)">
+              <tr><td x-text="formatMinute(e.time)"></td><td x-text="e.kind"></td><td x-text="e.machine ?? ''"></td><td x-text="e.job ?? ''"></td><td x-text="e.detail"></td></tr>
+            </template>
+            </tbody>
+          </table>
+        </details>
+      </div>
+    </template>
+  </section>
+</main>
+</body>
+</html>

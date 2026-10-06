@@ -246,6 +246,35 @@ Results so far, on generated plants it never saw (unshaped reward):
 The transfer machinery (generator, candidate policy, fine-tuning, benchmark) works; the limiting factor is how
 little PPO improves on the pull heuristic, on one plant as well as across plants.
 
+## Shop-floor model
+
+A second, more realistic model for small and medium-sized job shops lives in `fertigung.shop`
+(see [`src/fertigung/configs/workshop.yaml`](src/fertigung/configs/workshop.yaml)):
+
+- **Layout**: raw, intermediate and finished stores and machines with positions; Manhattan or Euclidean distances.
+- **Machines**: input and output buffers (parts), slots, operators per running job, and a setup matrix per machine
+  type (first setup, default family change, exceptions from → to). Operations carry a setup family and an
+  `interruptible` flag (false: must finish within one staffed stretch, e.g. curing).
+- **Transport**: vehicles with count, capacity and speed carry parts automatically: raw store → input buffer,
+  output buffer → input buffer of the next machine, to the intermediate store when an output buffer blocks a
+  machine, and finished products to the finished store.
+- **Staff and calendar**: one worker pool per shift; minute 0 is a configurable weekday and time.
+- **Logistics**: trucks collect finished orders at fixed times (complete orders only, unless partial shipments
+  are allowed); revenue and on-time delivery are measured at the pickup.
+- **Objective profiles**: `balanced`, `on_time`, `revenue`, `low_stock`, `utilization`, with optional weights for
+  revenue, material, holding (per part-hour), lateness (per unit-hour), setup and transport hours.
+
+The simulation runs in minutes: the planner assigns operations to machines, everything else (material
+allocation, transport, setups, staffing, blocking, shipping) is automatic. The baseline planner `ShopPull`
+explodes the open orders against existing and planned parts and prefers machines already set up for an
+operation's family. A simulated week takes about two seconds.
+
+The UI at `/ui/shop.html` edits shops (drag-and-drop floor plan, operations, machine types with setup matrix,
+transport, shifts, pickups, orders with weekday/time deadlines, objective) with live validation, and shows
+simulations with KPIs, order status, utilisation and Gantt charts per machine slot (setup, processing, blocked,
+unstaffed hours) and per vehicle. API: `/shops` (CRUD), `/shops/validate`, `/shop-profiles`, `/shop-policies`,
+`/shop-simulations`.
+
 ## Web UI
 
 `fertigung serve` serves a browser UI at `/` (static HTML with Alpine.js, Chart.js and Cytoscape.js,
@@ -318,7 +347,8 @@ Dependabot keeps the uv lockfile, the GitHub Actions and the Docker base image u
 src/fertigung/
 ├── core/          # config schema, plant model, simulation, reward, validation
 ├── rl/            # Gymnasium env, candidate policy, behavior cloning, training, model loading
-├── api/           # FastAPI app, SQLite store, training worker
+├── shop/          # shop-floor model: schema, validation, simulation, planner, report
+├── api/           # FastAPI app, SQLite store, training worker, shop routes
 ├── ui/            # browser UI served at /
 ├── configs/       # bundled reference plant
 ├── models/        # bundled models: reference (plant-specific), general (transfer)

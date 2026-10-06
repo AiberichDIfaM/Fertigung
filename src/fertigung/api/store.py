@@ -22,6 +22,13 @@ CREATE TABLE IF NOT EXISTS models (
     architecture TEXT NOT NULL DEFAULT 'plant'
 );
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS shops (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, config TEXT NOT NULL,
+    created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS shop_simulations (
+    id TEXT PRIMARY KEY, request TEXT NOT NULL, result TEXT NOT NULL, created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS simulations (
     id TEXT PRIMARY KEY, request TEXT NOT NULL, result TEXT NOT NULL, created_at TEXT NOT NULL
 );

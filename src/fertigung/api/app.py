@@ -17,6 +17,7 @@ from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from fertigung.api.shop_routes import seed_shop, shop_router
 from fertigung.api.store import Store, now
 from fertigung.api.worker import TrainingWorker, db_path, model_dir
 from fertigung.core.config import PlantConfig, reference_config
@@ -151,6 +152,7 @@ def create_app(
     store = Store(db_path(data))
     worker = TrainingWorker(store, data)
     seed(store, data)
+    seed_shop(store)
 
     def require_key(key: str | None = Security(APIKeyHeader(name="X-API-Key", auto_error=False))):
         if api_key and not (key and secrets.compare_digest(key.encode(), api_key.encode())):
@@ -349,4 +351,5 @@ def create_app(
         }
 
     app.include_router(api)
+    app.include_router(shop_router(store, [Depends(require_key)]))
     return app

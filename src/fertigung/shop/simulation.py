@@ -39,7 +39,10 @@ class Job:
     setup_left: int = 0
     remaining: int = 0
     started: int | None = None
+    run_start: int | None = None
+    run_end: int | None = None
     finished: int | None = None
+    paused: int = 0
 
 
 @dataclass
@@ -54,10 +57,20 @@ class Request:
 
 @dataclass
 class Vehicle:
-    kind: str
+    name: str
     capacity: int
     position: tuple[float, float]
     free_at: int = 0
+
+
+@dataclass(frozen=True)
+class Trip:
+    vehicle: str
+    start: int
+    end: int
+    src: str
+    dst: str
+    parts: dict
 
 
 @dataclass
@@ -114,9 +127,9 @@ class ShopSimulation:
         self.requests: list[Request] = []
         self.arrivals: list[tuple[int, Request]] = []
         self.vehicles = [
-            Vehicle(v.name, v.capacity, m.store_position["raw"])
+            Vehicle(f"{v.name}-{k + 1}" if v.count > 1 else v.name, v.capacity, m.store_position["raw"])
             for v in m.config.transport.vehicles
-            for _ in range(v.count)
+            for k in range(v.count)
         ]
         self.orders = [
             Order(
@@ -130,6 +143,7 @@ class ShopSimulation:
             for o in m.config.orders
         ]
         self.ledger = Ledger()
+        self.trips: list[Trip] = []
         self.events: list[Event] = []
         self._next_job = 0
 
@@ -201,6 +215,12 @@ class ShopSimulation:
                 mc.name: round(ledger.busy[i] / (mc.slots * staffed), 3) for i, mc in enumerate(m.machines)
             },
         }
+
+    def location_name(self, location: tuple) -> str:
+        kind, where = location
+        if kind == "store":
+            return {s.kind: s.name for s in self.model.config.layout.stores}[where]
+        return f"{self.model.machines[where].name} ({'in' if kind == 'in' else 'out'})"
 
     # ----- automatic behaviour
 
@@ -307,6 +327,19 @@ class ShopSimulation:
                     self.locked[r.src][r.part] -= r.qty
                 self.arrivals.append((arrival, r))
             self.ledger.transport_minutes += arrival - self.time
+            parts = Counter()
+            for r in load:
+                parts[r.part] += r.qty
+            self.trips.append(
+                Trip(
+                    vehicle.name,
+                    self.time,
+                    arrival,
+                    self.location_name(first.src),
+                    self.location_name(first.dst),
+                    dict(parts),
+                )
+            )
             vehicle.free_at, vehicle.position = arrival, dst_pos
             self._log(
                 "transport",
@@ -348,7 +381,7 @@ class ShopSimulation:
                     job.state, job.setup_left = "setup", setup
                     self._log("setup", i, jid, f"{self.family[i]}->{tr.family} {setup} min")
                     break
-                job.state, job.remaining = "running", tr.duration
+                job.state, job.remaining, job.run_start = "running", tr.duration, self.time
                 self._log("start", i, jid, tr.name)
                 slots -= 1
 
@@ -369,6 +402,7 @@ class ShopSimulation:
             need = self._staff_need(job)
             interruptible = m.transformations[job.transformation].interruptible or job.state == "setup"
             if need and staff < need and interruptible:
+                job.paused += 1
                 continue
             staff -= min(need, staff)
             if job.state == "setup":
@@ -377,12 +411,13 @@ class ShopSimulation:
                 if job.setup_left == 0:
                     self.family[job.machine] = m.transformations[job.transformation].family
                     job.state, job.remaining = "running", m.transformations[job.transformation].duration
+                    job.run_start = self.time + 1
                     set_up.append(job)
             else:
                 job.remaining -= 1
                 ledger.busy[job.machine] += 1
                 if job.remaining == 0:
-                    job.state = "blocked"
+                    job.state, job.run_end = "blocked", self.time + 1
 
         in_transit = sum(r.qty for _, r in self.arrivals)
         ledger.holding_part_minutes += (

@@ -8,12 +8,14 @@
   <link rel="stylesheet" href="style.css">
   <script src="vendor/chart.umd.min.js"></script>
   <script src="vendor/cytoscape.min.js"></script>
+  <script src="common.js"></script>
   <script src="app.js"></script>
   <script defer src="vendor/alpine.min.js"></script>
 </head>
 <body x-data="app" x-cloak>
 <header>
   <h1>Fertigung</h1>
+  <a class="mode" href="shop.html">Shop floor model →</a>
   <label class="plant-select">Plant
     <select x-model="plantId" @change="selectPlant(plantId)">
       <template x-for="p in plants" :key="p.id">
