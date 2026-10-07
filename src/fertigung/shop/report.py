@@ -3,11 +3,9 @@
 from dataclasses import asdict
 
 from fertigung.shop.config import ShopConfig
-from fertigung.shop.heuristics import ShopPull
 from fertigung.shop.model import ShopModel
 from fertigung.shop.simulation import ShopSimulation
-
-POLICIES = {"pull": ShopPull}
+from fertigung.shop.solvers import make_solver
 
 
 def default_minutes(config: ShopConfig) -> int:
@@ -16,10 +14,11 @@ def default_minutes(config: ShopConfig) -> int:
 
 
 def simulate(
-    config: ShopConfig, policy: str = "pull", minutes: int | None = None, queue_limit: int = 2
+    config: ShopConfig, solver: str = "pull", minutes: int | None = None, queue_limit: int = 2
 ) -> dict:
     sim = ShopSimulation(ShopModel(config))
-    sim.run(POLICIES[policy](queue_limit), minutes or default_minutes(config))
+    planner = make_solver(solver, queue_limit)
+    sim.run(planner, minutes or default_minutes(config))
     model = sim.model
     jobs = []
     for job in sim.jobs.values():
@@ -44,6 +43,7 @@ def simulate(
         "minutes": sim.time,
         "start": config.start.model_dump(),
         "kpis": sim.kpis(),
+        "solver": {"name": solver, "decisions": getattr(planner, "decisions", [])},
         "orders": [
             asdict(o) | {"on_time": o.completed_at is not None and o.completed_at <= o.deadline}
             for o in sim.orders

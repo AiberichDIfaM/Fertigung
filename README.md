@@ -264,15 +264,23 @@ A second, more realistic model for small and medium-sized job shops lives in `fe
 - **Objective profiles**: `balanced`, `on_time`, `revenue`, `low_stock`, `utilization`, with optional weights for
   revenue, material, holding (per part-hour), lateness (per unit-hour), setup and transport hours.
 
-The simulation runs in minutes: the planner assigns operations to machines, everything else (material
-allocation, transport, setups, staffing, blocking, shipping) is automatic. The baseline planner `ShopPull`
-explodes the open orders against existing and planned parts and prefers machines already set up for an
-operation's family. A simulated week takes about two seconds.
+The simulation runs in minutes: a solver assigns operations to machines, everything else (material
+allocation, transport, setups, staffing, blocking, shipping) is automatic. Simulation and solvers are
+separate and only meet in `shop/plan.py`: a solver is a `Planner` that sees a read-only `ShopState` (orders,
+queues, available and missing parts, work in progress) and returns `Assignment`s; for what-if runs it forks
+the state into a separate `Simulator`. New solvers go into `shop/solvers/` and the `SOLVERS` registry.
+
+- `pull`: explodes the open orders against existing and planned parts, prefers machines already set up for an
+  operation's family, keeps at most `queue_limit` jobs waiting per machine and limits work in progress to the
+  room for intermediate parts (otherwise full buffers deadlock the shop). A simulated week takes about a second.
+- `auto`: simulates `pull` with queue limits 1-4 from the current state to the end of the run, follows the best
+  one and decides again daily. On 64 random busy order books it was never worse than `pull` and on average
+  clearly better, at about 15 times the run time.
 
 The UI at `/ui/shop.html` edits shops (drag-and-drop floor plan, operations, machine types with setup matrix,
 transport, shifts, pickups, orders with weekday/time deadlines, objective) with live validation, and shows
 simulations with KPIs, order status, utilisation and Gantt charts per machine slot (setup, processing, blocked,
-unstaffed hours) and per vehicle. API: `/shops` (CRUD), `/shops/validate`, `/shop-profiles`, `/shop-policies`,
+unstaffed hours) and per vehicle. API: `/shops` (CRUD), `/shops/validate`, `/shop-profiles`, `/shop-solvers`,
 `/shop-simulations`.
 
 ## Web UI
@@ -347,7 +355,7 @@ Dependabot keeps the uv lockfile, the GitHub Actions and the Docker base image u
 src/fertigung/
 ├── core/          # config schema, plant model, simulation, reward, validation
 ├── rl/            # Gymnasium env, candidate policy, behavior cloning, training, model loading
-├── shop/          # shop-floor model: schema, validation, simulation, planner, report
+├── shop/          # shop-floor model: schema, validation, simulation, solvers/, plan.py (interface), report
 ├── api/           # FastAPI app, SQLite store, training worker, shop routes
 ├── ui/            # browser UI served at /
 ├── configs/       # bundled reference plant

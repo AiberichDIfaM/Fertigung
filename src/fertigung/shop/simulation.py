@@ -11,10 +11,12 @@ Simplifications: parts leave their source when a vehicle is dispatched; a setup 
 staff is one pool, non-interruptible jobs keep running even if a shift change leaves too few workers.
 """
 
+import copy
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 
 from fertigung.shop.model import ShopModel
+from fertigung.shop.plan import OrderState, Planner
 
 RAW, INTERMEDIATE, FINISHED = ("store", "raw"), ("store", "intermediate"), ("store", "finished")
 
@@ -111,8 +113,11 @@ class Ledger:
 
 
 class ShopSimulation:
+    """Implements `plan.Simulator`."""
+
     def __init__(self, model: ShopModel):
         self.model = model
+        self.state = SimulationState(self)
         self.reset()
 
     def reset(self):
@@ -122,6 +127,7 @@ class ShopSimulation:
         self.stock: defaultdict[tuple, Counter] = defaultdict(Counter)
         self.locked: defaultdict[tuple, Counter] = defaultdict(Counter)
         self.jobs: dict[int, Job] = {}
+        self.open_jobs: dict[int, Job] = {}  # not done yet, in id order
         self.queues: list[list[int]] = [[] for _ in m.machines]
         self.family: list[str | None] = [None] * len(m.machines)
         self.requests: list[Request] = []
@@ -157,23 +163,26 @@ class ShopSimulation:
             raise ValueError(f"{self.model.machines[m].name} cannot run {self.model.transformations[t].name}")
         self._next_job += 1
         job = Job(self._next_job, t, m, Counter(self.model.transformations[t].inputs))
-        self.jobs[job.id] = job
+        self.jobs[job.id] = self.open_jobs[job.id] = job
         self.queues[m].append(job.id)
         self._log("assign", m, job.id, self.model.transformations[t].name)
         return job.id
 
-    def run(self, policy, minutes: int):
+    def run(self, planner: Planner, minutes: int):
         self.end = self.time + minutes
         while self.time < self.end:
-            while (choice := policy(self)) is not None:
-                self.assign(*choice)
+            while (a := planner(self.state)) is not None:
+                self.assign(a.transformation, a.machine)
             self._settle()
             self._minute()
+
+    def fork(self) -> "ShopSimulation":
+        return copy.deepcopy(self, {id(self.model): self.model})
 
     # ----- queries
 
     def active_jobs(self, m: int | None = None) -> list[Job]:
-        return [j for j in self.jobs.values() if j.state != "done" and (m is None or j.machine == m)]
+        return [j for j in self.open_jobs.values() if m is None or j.machine == m]
 
     def free(self, location: tuple, part: str) -> int:
         return self.stock[location][part] - self.locked[location][part]
@@ -182,15 +191,18 @@ class ShopSimulation:
         incoming = sum(sum(self.jobs[j].incoming.values()) for j in self.queues[m])
         return self.model.machines[m].input_buffer - sum(self.stock[IN(m)].values()) - incoming
 
-    def kpis(self) -> dict:
-        m, ledger, w = self.model, self.ledger, self.model.weights
-        hours = {
+    def hours(self) -> dict:
+        ledger = self.ledger
+        return {
             "holding_part_hours": ledger.holding_part_minutes / 60,
             "late_unit_hours": ledger.late_unit_minutes / 60,
             "setup_hours": ledger.setup_minutes / 60,
             "transport_hours": ledger.transport_minutes / 60,
         }
-        objective = (
+
+    def objective(self) -> float:
+        ledger, w, hours = self.ledger, self.model.weights, self.hours()
+        return (
             w["revenue"] * ledger.revenue
             - w["material_cost"] * ledger.material_cost
             - w["holding_cost"] * hours["holding_part_hours"]
@@ -198,10 +210,13 @@ class ShopSimulation:
             - w["setup"] * hours["setup_hours"]
             - w["transport"] * hours["transport_hours"]
         )
+
+    def kpis(self) -> dict:
+        m, ledger = self.model, self.ledger
         staffed = max(sum(m.workers(t) > 0 for t in range(self.time)), 1)
         return {
             "time": self.time,
-            "objective": objective,
+            "objective": self.objective(),
             "revenue": ledger.revenue,
             "material_cost": ledger.material_cost,
             "profit": ledger.revenue - ledger.material_cost,
@@ -210,7 +225,7 @@ class ShopSimulation:
                 o.completed_at is not None and o.completed_at <= o.deadline for o in self.orders
             ),
             "orders_completed": sum(not o.open for o in self.orders),
-            **hours,
+            **self.hours(),
             "utilization": {  # running minutes per slot over staffed minutes
                 mc.name: round(ledger.busy[i] / (mc.slots * staffed), 3) for i, mc in enumerate(m.machines)
             },
@@ -275,6 +290,8 @@ class ShopSimulation:
                         space -= qty
                     if job.needs[part] == 0:
                         del job.needs[part]
+                # Keep room for what this job still lacks, so later jobs cannot fill the buffer and starve it.
+                space -= sum(job.needs.values())
 
     def _source(self, part: str, machine: int) -> tuple | None:
         m = self.model
@@ -394,7 +411,7 @@ class ShopSimulation:
         m, ledger = self.model, self.ledger
         staff = m.workers(self.time)
         working = sorted(
-            (j for j in self.jobs.values() if j.state in ("setup", "running")),
+            (j for j in self.open_jobs.values() if j.state in ("setup", "running")),
             key=lambda j: (m.transformations[j.transformation].interruptible, j.state != "setup", j.started),
         )
         set_up = []
@@ -423,7 +440,7 @@ class ShopSimulation:
         ledger.holding_part_minutes += (
             in_transit
             + sum(sum(c.values()) for loc, c in self.stock.items() if loc != RAW)
-            + sum(j.state in ("setup", "running", "blocked") for j in self.jobs.values())
+            + sum(j.state in ("setup", "running", "blocked") for j in self.open_jobs.values())
         )
         ledger.late_unit_minutes += sum(
             o.quantity - o.delivered for o in self.orders if o.open and self.time >= o.deadline
@@ -442,11 +459,12 @@ class ShopSimulation:
                 if job.incoming[r.part] == 0:
                     del job.incoming[r.part]
                 job.present[r.part] += r.qty
-        for job in sorted((j for j in self.jobs.values() if j.state == "blocked"), key=lambda j: j.id):
+        for job in [j for j in self.open_jobs.values() if j.state == "blocked"]:
             out = OUT(job.machine)
             if sum(self.stock[out].values()) < m.machines[job.machine].output_buffer:
                 self.stock[out][m.transformations[job.transformation].output] += 1
                 job.state, job.finished = "done", self.time
+                del self.open_jobs[job.id]
                 self._log("finish", job.machine, job.id, m.transformations[job.transformation].name)
         if m.is_pickup(self.time):
             self._ship()
@@ -476,3 +494,78 @@ class ShopSimulation:
     def _log(self, kind, machine, job, detail=""):
         name = self.model.machines[machine].name if machine is not None else None
         self.events.append(Event(self.time, kind, name, job, detail))
+
+
+class SimulationState:
+    """Implements `plan.ShopState` on top of a running simulation."""
+
+    def __init__(self, sim: ShopSimulation):
+        self._sim = sim
+
+    @property
+    def model(self) -> ShopModel:
+        return self._sim.model
+
+    @property
+    def time(self) -> int:
+        return self._sim.time
+
+    @property
+    def end(self) -> int:
+        return self._sim.end
+
+    def open_orders(self) -> list[OrderState]:
+        return [
+            OrderState(o.product, o.quantity, o.delivered, o.release, o.deadline, o.priority)
+            for o in self._sim.orders
+            if o.open
+        ]
+
+    def queue(self, machine: int) -> list[int]:
+        sim = self._sim
+        return [sim.jobs[j].transformation for j in sim.queues[machine]]
+
+    def load(self, machine: int) -> int:
+        return len(self._sim.active_jobs(machine))
+
+    def upcoming_family(self, machine: int) -> str | None:
+        sim = self._sim
+        queue = sim.queues[machine]
+        if not queue:
+            return sim.family[machine]
+        return sim.model.transformations[sim.jobs[queue[-1]].transformation].family
+
+    def available(self) -> Counter:
+        sim, m = self._sim, self._sim.model
+        parts = Counter()
+        for loc, stock in sim.stock.items():
+            if loc != RAW and loc[0] != "in":
+                parts.update(stock)
+        for _, r in sim.arrivals:
+            if r.dst[0] != "in":
+                parts[r.part] += r.qty
+        for job in sim.active_jobs():
+            parts[m.transformations[job.transformation].output] += 1
+        return parts
+
+    def missing_inputs(self) -> Counter:
+        missing = Counter()
+        for job in self._sim.active_jobs():
+            missing.update(job.needs)
+        return missing
+
+    def intermediate_parts(self) -> int:
+        sim, m = self._sim, self._sim.model
+        stored = sum(
+            n
+            for loc, stock in sim.stock.items()
+            if loc == INTERMEDIATE or loc[0] == "out"
+            for part, n in stock.items()
+            if part not in m.final
+        )
+        moving = sum(r.qty for _, r in sim.arrivals if r.dst == INTERMEDIATE)
+        planned = sum(m.transformations[j.transformation].output not in m.final for j in sim.active_jobs())
+        return stored + moving + planned
+
+    def fork(self) -> ShopSimulation:
+        return self._sim.fork()

@@ -3,9 +3,9 @@ from importlib import resources
 import yaml
 
 from fertigung.shop.config import load_shop
-from fertigung.shop.heuristics import ShopPull
 from fertigung.shop.model import ShopModel
 from fertigung.shop.simulation import ShopSimulation
+from fertigung.shop.solvers import ShopPull
 
 # Machine halfway between the stores (30 m, 1 minute at 60 m/min), 2 minutes handling per trip.
 TINY = {

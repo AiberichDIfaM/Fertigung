@@ -9,18 +9,19 @@ from pydantic import BaseModel, Field
 from fertigung.api.store import Store, get_or_404, now
 from fertigung.shop.config import PROFILES, ShopConfig, workshop_config
 from fertigung.shop.model import ShopModel
-from fertigung.shop.report import POLICIES, simulate
+from fertigung.shop.report import simulate
+from fertigung.shop.solvers import SOLVERS
 from fertigung.shop.validation import validate_shop
 
 
 class ShopSimulationCreate(BaseModel):
     shop_id: str | None = Field(None, description="Stored shop; alternatively pass `config`")
     config: ShopConfig | None = None
-    policy: Literal["pull"] = "pull"
+    solver: Literal["pull", "auto"] = "pull"
     minutes: int | None = Field(
         None, ge=1, description="Default: one day after the last deadline, at least a week"
     )
-    queue_limit: int = Field(2, ge=1, description="Planned but not started jobs per machine")
+    queue_limit: int = Field(2, ge=1, description="Planned but not started jobs per machine (solver pull)")
 
 
 def seed_shop(store: Store):
@@ -90,9 +91,9 @@ def shop_router(store: Store, dependencies) -> APIRouter:
     def shop_profiles():
         return PROFILES
 
-    @router.get("/shop-policies")
-    def shop_policies():
-        return sorted(POLICIES)
+    @router.get("/shop-solvers")
+    def shop_solvers():
+        return SOLVERS
 
     @router.post("/shop-simulations", status_code=201)
     def create_simulation(body: ShopSimulationCreate):
@@ -104,7 +105,7 @@ def shop_router(store: Store, dependencies) -> APIRouter:
             raise HTTPException(422, "pass shop_id or config")
         if any(i.level == "error" for i in validate_shop(config)):
             raise HTTPException(422, "shop has validation errors")
-        result = simulate(config, body.policy, body.minutes, body.queue_limit)
+        result = simulate(config, body.solver, body.minutes, body.queue_limit)
         request = body.model_dump(exclude={"config"}) | {"shop": config.name}
         return store.insert("shop_simulations", request=request, result=result)
 

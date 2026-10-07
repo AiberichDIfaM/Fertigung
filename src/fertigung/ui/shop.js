@@ -91,6 +91,7 @@ document.addEventListener("alpine:init", () => {
     days: DAYS,
     config: normalize({ name: "", layout: { stores: [] }, part_types: [], transformations: [], machine_types: [], machines: [], transport: { speed: 1, vehicles: [] }, staff: { shifts: [] }, logistics: { pickups: [] } }),
     profiles: {},
+    solvers: {},
     weightLabels: {
       revenue: "per unit of revenue",
       material_cost: "per unit of material spend",
@@ -101,7 +102,7 @@ document.addEventListener("alpine:init", () => {
     },
     selected: null,
     drag: null,
-    sim: { policy: "pull", queue_limit: 2, minutes: null },
+    sim: { solver: "pull", queue_limit: 2, minutes: null },
     result: null,
     kpiKeys: ["objective", "revenue", "material_cost", "orders_on_time", "late_unit_hours", "setup_hours", "transport_hours", "holding_part_hours"],
     machineHeight: 300,
@@ -110,7 +111,7 @@ document.addEventListener("alpine:init", () => {
     async init() {
       window.addEventListener("hashchange", () => (this.tab = location.hash.slice(1) || "layout"));
       try {
-        this.profiles = await api("GET", "/shop-profiles");
+        [this.profiles, this.solvers] = await Promise.all([api("GET", "/shop-profiles"), api("GET", "/shop-solvers")]);
         await this.loadRecords();
         if (this.records.length) this.selectRecord(this.records[0].id);
       } catch (e) {
@@ -207,7 +208,7 @@ document.addEventListener("alpine:init", () => {
     async run() {
       this.busy = true;
       try {
-        const body = { config: this.config, policy: this.sim.policy, queue_limit: this.sim.queue_limit || 2 };
+        const body = { config: this.config, solver: this.sim.solver, queue_limit: this.sim.queue_limit || 2 };
         if (this.sim.minutes) body.minutes = this.sim.minutes;
         const sim = await api("POST", "/shop-simulations", body);
         this.result = sim.result;
@@ -217,6 +218,11 @@ document.addEventListener("alpine:init", () => {
       } finally {
         this.busy = false;
       }
+    },
+
+    decisionText() {
+      const decisions = this.result?.solver?.decisions || [];
+      return "Queue limits: " + decisions.map((d) => `${this.formatMinute(d.time)} → ${d.queue_limit}`).join(", ");
     },
 
     drawResult() {

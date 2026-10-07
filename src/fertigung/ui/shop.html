@@ -305,12 +305,17 @@
   <!-- Simulation -->
   <section x-show="tab === 'simulation'">
     <div class="toolbar">
-      <label>Policy <select x-model="sim.policy"><option value="pull">pull (demand-driven)</option></select></label>
-      <label>Queue limit <input type="number" min="1" x-model.number="sim.queue_limit"></label>
+      <label>Solver
+        <select x-model="sim.solver">
+          <template x-for="(text, name) in solvers" :key="name"><option :value="name" x-text="name" :title="text" :selected="name === sim.solver"></option></template>
+        </select>
+      </label>
+      <label x-show="sim.solver === 'pull'">Queue limit <input type="number" min="1" x-model.number="sim.queue_limit"></label>
       <label>Minutes <input type="number" min="1" placeholder="auto" x-model.number="sim.minutes"></label>
       <button class="primary" @click="run()" :disabled="busy || errorCount > 0">Run</button>
       <span class="hint" x-show="busy">Simulating…</span>
       <span class="hint" x-show="dirty">Runs the current, unsaved configuration.</span>
+      <span class="hint" x-show="result?.solver?.decisions.length" x-text="decisionText()"></span>
     </div>
     <template x-if="result">
       <div>
