@@ -115,8 +115,9 @@ class Ledger:
 class ShopSimulation:
     """Implements `plan.Simulator`."""
 
-    def __init__(self, model: ShopModel):
+    def __init__(self, model: ShopModel, record: bool = True):
         self.model = model
+        self.record = record  # events and trips, for reports
         self.state = SimulationState(self)
         self.reset()
 
@@ -177,7 +178,10 @@ class ShopSimulation:
             self._minute()
 
     def fork(self) -> "ShopSimulation":
-        return copy.deepcopy(self, {id(self.model): self.model})
+        """Copy of the current state without event and trip history that records nothing."""
+        trial = copy.deepcopy(self, {id(self.model): self.model, id(self.events): [], id(self.trips): []})
+        trial.record = False
+        return trial
 
     # ----- queries
 
@@ -344,26 +348,15 @@ class ShopSimulation:
                     self.locked[r.src][r.part] -= r.qty
                 self.arrivals.append((arrival, r))
             self.ledger.transport_minutes += arrival - self.time
-            parts = Counter()
-            for r in load:
-                parts[r.part] += r.qty
-            self.trips.append(
-                Trip(
-                    vehicle.name,
-                    self.time,
-                    arrival,
-                    self.location_name(first.src),
-                    self.location_name(first.dst),
-                    dict(parts),
-                )
-            )
             vehicle.free_at, vehicle.position = arrival, dst_pos
-            self._log(
-                "transport",
-                None,
-                first.job,
-                f"{sum(r.qty for r in load)} parts {first.src}->{first.dst} until {arrival}",
-            )
+            if self.record:
+                parts = Counter()
+                for r in load:
+                    parts[r.part] += r.qty
+                src, dst = self.location_name(first.src), self.location_name(first.dst)
+                self.trips.append(Trip(vehicle.name, self.time, arrival, src, dst, dict(parts)))
+                detail = f"{parts.total()} parts {src} -> {dst} until {arrival}"
+                self._log("transport", None, first.job, detail)
 
     def _start_jobs(self):
         m = self.model
@@ -492,6 +485,8 @@ class ShopSimulation:
             self._log("ship", None, None, f"{qty} x {o.product}")
 
     def _log(self, kind, machine, job, detail=""):
+        if not self.record:
+            return
         name = self.model.machines[machine].name if machine is not None else None
         self.events.append(Event(self.time, kind, name, job, detail))
 

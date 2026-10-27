@@ -102,6 +102,15 @@ def cmd_benchmark(args) -> int:
     return 0
 
 
+def cmd_shop_benchmark(args) -> int:
+    from fertigung.shop.benchmark import benchmark, format_table
+
+    report = benchmark(args.solvers, range(args.seed, args.seed + args.seeds), tuple(args.loads))
+    print(f"{len(report['cases'])} random order books, seeds from {args.seed}, loads {args.loads}")
+    print(format_table(report))
+    return 0
+
+
 def cmd_serve(args) -> int:
     import uvicorn
 
@@ -165,6 +174,13 @@ def main(argv=None) -> int:
         "--seed", type=int, default=50_000, help="seed of the first plant (keep clear of training seeds)"
     )
     p.set_defaults(func=cmd_benchmark)
+
+    p = sub.add_parser("shop-benchmark", help="compare shop solvers on random order books")
+    p.add_argument("solvers", nargs="+", help="specs like pull, pull:queue_limit=1, auto (first = baseline)")
+    p.add_argument("--seeds", type=int, default=8, help="order books per load")
+    p.add_argument("--seed", type=int, default=1000)
+    p.add_argument("--loads", type=float, nargs="+", default=[1.0, 1.6, 2.2])
+    p.set_defaults(func=cmd_shop_benchmark)
 
     p = sub.add_parser("serve", help="run the HTTP API")
     p.add_argument("--host", default="127.0.0.1")

@@ -271,11 +271,24 @@ queues, available and missing parts, work in progress) and returns `Assignment`s
 the state into a separate `Simulator`. New solvers go into `shop/solvers/` and the `SOLVERS` registry.
 
 - `pull`: explodes the open orders against existing and planned parts, prefers machines already set up for an
-  operation's family, keeps at most `queue_limit` jobs waiting per machine and limits work in progress to the
-  room for intermediate parts (otherwise full buffers deadlock the shop). A simulated week takes about a second.
-- `auto`: simulates `pull` with queue limits 1-4 from the current state to the end of the run, follows the best
-  one and decides again daily. On 64 random busy order books it was never worse than `pull` and on average
-  clearly better, at about 15 times the run time.
+  operation's family and lets work for that family jump ahead by up to 20 order units (`batch`), keeps at most
+  `queue_limit` jobs (or `queue_minutes` of work) waiting per machine and limits work in progress to the room
+  for intermediate parts (otherwise full buffers deadlock the shop).
+- `auto`: simulates several `pull` settings from the current state to the end of the run in parallel worker
+  processes, follows the best one and decides again daily.
+
+`fertigung shop-benchmark pull auto pull:queue_minutes=120` compares solvers on random order books
+(`shop/generator.py`, 8 seeds x loads 1.0/1.6/2.2, 10 days each; the first solver is the baseline):
+
+| solver | objective | on time | late unit-hours | better / worse than pull | s per run |
+|---|---|---|---|---|---|
+| `pull` | 232k | 604/613 | 2448 | – | 5 |
+| `pull:queue_minutes=120` | 305k | 609/613 | 936 | 7 / 17 | 7 |
+| `auto` | 322k | 610/613 | 696 | 23 / 0 | ~60 alone, 125 in a full pool |
+
+A learned chooser (MLP on order book, capacity and WIP features, trained on 2550 daily decisions of `auto`
+to minimise regret) reached 269k (better than pull on 5, worse on 8): learning which setting to use did not
+beat simply using `queue_minutes=120`, let alone `auto`.
 
 The UI at `/ui/shop.html` edits shops (drag-and-drop floor plan, operations, machine types with setup matrix,
 transport, shifts, pickups, orders with weekday/time deadlines, objective) with live validation, and shows

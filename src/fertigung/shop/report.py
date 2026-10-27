@@ -17,7 +17,7 @@ def simulate(
     config: ShopConfig, solver: str = "pull", minutes: int | None = None, queue_limit: int = 2
 ) -> dict:
     sim = ShopSimulation(ShopModel(config))
-    planner = make_solver(solver, queue_limit)
+    planner = make_solver(solver, **({"queue_limit": queue_limit} if solver == "pull" else {}))
     sim.run(planner, minutes or default_minutes(config))
     model = sim.model
     jobs = []

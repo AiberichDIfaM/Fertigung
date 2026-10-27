@@ -11,37 +11,50 @@ class ShopPull:
     machine. When the room for intermediate parts (intermediate store and output buffers) runs low, only the
     most urgent order unit and missing inputs of planned jobs may produce intermediate parts; otherwise
     work for later orders fills every buffer and the shop deadlocks. The default reserve is one part per
-    possible queued job."""
+    possible queued job.
 
-    def __init__(self, queue_limit: int = 2, reserve: int | None = None):
+    `batch` lets work for the tooling family a machine will have next jump ahead by that many order units,
+    which saves setups (on random order books better than no batching on 17 of 24, worse on 5).
+    `queue_minutes` limits the queue by processing minutes per slot instead of jobs."""
+
+    def __init__(
+        self,
+        queue_limit: int = 2,
+        reserve: int | None = None,
+        queue_minutes: float | None = None,
+        batch: int = 20,
+    ):
         self.queue_limit = queue_limit
         self.reserve = reserve
+        self.queue_minutes = queue_minutes
+        self.batch = batch
 
     def __call__(self, state: ShopState) -> Assignment | None:
         m = state.model
         available = state.available()
         need, priority = Counter(), {}
 
-        def explode(part, n, unit):
+        def explode(part, n, unit, per_unit):
+            """n parts for consecutive order units starting at `unit`, `per_unit` parts each."""
             if part in m.raw or part not in m.producers:
                 return
             used = min(available[part], n)
             available[part] -= used
             if n > used:
+                first = unit + int(used // per_unit)  # first unit that lacks this part
                 need[part] += n - used
-                priority.setdefault(part, unit)
+                priority.setdefault(part, first)
                 for q, k in m.transformations[m.producers[part]].inputs.items():
-                    explode(q, k * (n - used), unit)
+                    explode(q, k * (n - used), first, per_unit * k)
 
         # Inputs that planned jobs still lack come first: their outputs are already counted as available.
         for part, n in state.missing_inputs().items():
-            explode(part, n, 0)
+            explode(part, n, 0, float("inf"))
         unit = 1
         released = (o for o in state.open_orders() if o.release <= state.time)
         for o in sorted(released, key=lambda o: (o.deadline, -o.priority)):
-            for _ in range(o.missing):
-                explode(o.product, 1, unit)
-                unit += 1
+            explode(o.product, o.missing, unit, 1)
+            unit += o.missing
 
         reserve = self.queue_limit * len(m.machines) if self.reserve is None else self.reserve
         tight = state.intermediate_parts() + reserve >= wip_capacity(m)
@@ -52,16 +65,19 @@ class ShopPull:
             t = m.producers[part]
             family = m.transformations[t].family
             for i in m.runners[t]:
-                queued = len(state.queue(i))
-                if queued >= self.queue_limit:
+                queue = state.queue(i)
+                if self.queue_minutes is None:
+                    if len(queue) >= self.queue_limit:
+                        continue
+                elif queue and sum(m.transformations[q].duration for q in queue) >= (
+                    self.queue_minutes * m.machines[i].slots
+                ):
                     continue
-                key = (
-                    priority[part],
-                    m.distance_to_final.get(part, 99),
-                    family is not None and state.upcoming_family(i) != family,
-                    queued + state.load(i),
-                    i,
-                )
+                switch = family is not None and state.upcoming_family(i) != family
+                urgency = priority[part]
+                if self.batch and not switch and family is not None and urgency > 0:
+                    urgency = max(urgency - self.batch, 1)
+                key = (urgency, m.distance_to_final.get(part, 99), switch, len(queue) + state.load(i), i)
                 if best_key is None or key < best_key:
                     best, best_key = Assignment(t, i), key
         return best

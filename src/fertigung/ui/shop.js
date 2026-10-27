@@ -222,7 +222,8 @@ document.addEventListener("alpine:init", () => {
 
     decisionText() {
       const decisions = this.result?.solver?.decisions || [];
-      return "Queue limits: " + decisions.map((d) => `${this.formatMinute(d.time)} → ${d.queue_limit}`).join(", ");
+      const option = (o) => Object.entries(o).map(([k, v]) => `${k.replace("_", " ")} ${v}`).join(", ");
+      return "Chosen settings: " + decisions.map((d) => `${this.formatMinute(d.time)} → ${option(d.option)}`).join("; ");
     },
 
     drawResult() {

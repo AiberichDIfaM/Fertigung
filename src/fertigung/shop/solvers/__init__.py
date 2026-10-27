@@ -6,13 +6,13 @@ from fertigung.shop.solvers.pull import ShopPull
 
 SOLVERS = {
     "pull": "Demand-driven assignment with a fixed queue limit",
-    "auto": "Simulates every queue limit (1-4) once a day and follows the best",
+    "auto": "Simulates several pull settings once a day and follows the best",
 }
 
 
-def make_solver(name: str, queue_limit: int = 2) -> Planner:
+def make_solver(name: str, **params) -> Planner:
     if name == "pull":
-        return ShopPull(queue_limit)
+        return ShopPull(**params)
     if name == "auto":
-        return ShopAuto()
+        return ShopAuto(**params)
     raise ValueError(f"unknown solver {name}")
